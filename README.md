@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # KPMG Nexus: Enterprise AI Gateway (Standalone Edition)
 
 ## Overview
@@ -51,3 +52,6 @@ This tool is built for enterprise environments. It serves as a middle-layer "Com
 
 ## Licensing & Usage
 This is a proprietary enterprise architecture developed for KPMG Philippines internal technical validation. 
+=======
+# KPMG-NEXUS-Prototype
+>>>>>>> 0c648bc8a0d32f92f2b6c5b2b0f8da2ff2eb81fa
