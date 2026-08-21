@@ -207,11 +207,36 @@ export async function runExceptionRecoveryAgent(exceptionId: string): Promise<Ag
   run.autonomyLevel = policyDecision.effectiveLevel;
   addStep(run.id, "POLICY", `Autonomy level: ${policyDecision.effectiveLevel}`, policyDecision.reason);
 
+  if (policyDecision.effectiveLevel === "OBSERVE") {
+    return reportOnly(run, exception, option, policyDecision.reason);
+  }
+
   if (policyDecision.requiresApproval) {
     return requestHumanApproval(run, shipment, exception, option, policyDecision.effectiveLevel);
   }
 
   return executeAndComplete(run, shipment, exception, option);
+}
+
+/**
+ * OBSERVE means detect and report only — the agent must never execute or
+ * even request approval to execute. The exception is left OPEN (not
+ * resolved, not escalated) so it stays visible for a human to act on.
+ */
+function reportOnly(run: AgentRun, exception: OperationalException, option: RecoveryOption, reason: string): AgentRun {
+  addStep(
+    run.id,
+    "ESCALATE",
+    "Observed only — no autonomous action taken",
+    `${option.type.replace(/_/g, " ")} was identified as the recommended recovery, but ${reason} No action was executed; this exception awaits manual review.`,
+    "WARN"
+  );
+  exception.status = "OPEN";
+  exception.agentRunId = run.id;
+  run.status = "COMPLETED";
+  run.completedAt = nowIso();
+  run.outcomeSummary = `Observed only (OBSERVE policy) — recommended ${option.type.replace(/_/g, " ").toLowerCase()} but took no action.`;
+  return run;
 }
 
 function requestHumanApproval(

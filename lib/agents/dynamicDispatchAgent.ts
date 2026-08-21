@@ -83,6 +83,20 @@ export function evaluateDispatchAssignment(shipmentId: string): DispatchCheckRes
   run.autonomyLevel = policyDecision.effectiveLevel;
   addStep(run.id, "POLICY", `Autonomy level: ${policyDecision.effectiveLevel}`, policyDecision.reason);
 
+  if (policyDecision.effectiveLevel === "OBSERVE") {
+    addStep(
+      run.id,
+      "ESCALATE",
+      "Observed only — no autonomous action taken",
+      `Reassignment to ${alt.name} was identified as the recommended fix, but ${policyDecision.reason} No action was executed; this shipment awaits manual review.`,
+      "WARN"
+    );
+    run.status = "COMPLETED";
+    run.completedAt = nowIso();
+    run.outcomeSummary = `Observed only (OBSERVE policy) — recommended reassigning ${shipmentId} to ${alt.name} but took no action.`;
+    return { shipmentId, reassignmentNeeded: true, run, reason: run.outcomeSummary };
+  }
+
   if (policyDecision.requiresApproval) {
     addStep(run.id, "APPROVAL", "Escalated for human approval", `Driver reassignment requires approval under autonomy level ${policyDecision.effectiveLevel}.`);
     getState().pendingDispatchProposals.set(run.id, alt.id);

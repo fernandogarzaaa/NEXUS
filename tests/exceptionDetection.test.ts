@@ -28,10 +28,17 @@ describe("exception detection", () => {
     expect(run).not.toBeNull();
   });
 
-  it("auto-resolves without triggering the recovery pipeline for a trivial, in-tolerance delay", async () => {
+  it("auto-resolves without triggering the recovery pipeline for a trivial, in-tolerance delay, and never marks the shipment EXCEPTION", async () => {
+    const state = getState();
+    const shipmentBefore = state.shipments.get(HERO_SHIPMENT_ID)!.status;
     const { exception, run } = await detectDelayException(HERO_SHIPMENT_ID, 1, "DRIVER_DELAYED");
     expect(exception.status).toBe("RESOLVED");
     expect(run).toBeNull();
+    // Regression: an in-tolerance delay must not leave the shipment stuck
+    // at EXCEPTION forever (it would then also drop out of dispatch sweeps,
+    // which only scan IN_TRANSIT/SCHEDULED shipments).
+    expect(state.shipments.get(HERO_SHIPMENT_ID)!.status).toBe(shipmentBefore);
+    expect(state.shipments.get(HERO_SHIPMENT_ID)!.status).not.toBe("EXCEPTION");
   });
 
   it("weighs severity by shipment priority — the same delay is more severe for a CRITICAL shipment", async () => {

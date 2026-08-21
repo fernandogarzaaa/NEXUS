@@ -37,7 +37,6 @@ export async function detectDelayException(
 
   const eta = calculateETA({ shipmentId, delayMin });
   shipment.currentEta = eta.newEta;
-  shipment.status = "EXCEPTION";
   shipment.updatedAt = nowIso();
 
   const severity = computeSeverity(Math.max(eta.minutesLate, 0), shipment.priority);
@@ -73,7 +72,9 @@ export async function detectDelayException(
   });
 
   // Only trigger the recovery pipeline for exceptions that actually miss
-  // the delivery window or otherwise require operational attention.
+  // the delivery window or otherwise require operational attention. A
+  // trivial, in-tolerance delay never touched the shipment's operational
+  // status, so it's left exactly as it was found.
   if (!eta.violatesWindow && severity === "LOW") {
     exception.status = "RESOLVED";
     exception.resolutionSummary = "Within tolerance — no recovery action required.";
@@ -81,6 +82,7 @@ export async function detectDelayException(
     return { exception, run: null };
   }
 
+  shipment.status = "EXCEPTION";
   const run = await runExceptionRecoveryAgent(exception.id);
   return { exception, run };
 }

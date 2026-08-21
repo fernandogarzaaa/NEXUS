@@ -39,6 +39,7 @@ export async function decideApprovalAction(approvalId: string, approve: boolean,
   const state = getState();
   const approval = state.approvals.get(approvalId);
   if (!approval) throw new Error(`Unknown approval ${approvalId}`);
+  if (approval.status !== "PENDING") return; // already decided — idempotent no-op (double-click, retry, stale page)
   approval.status = approve ? "APPROVED" : "REJECTED";
   approval.resolvedAt = new Date().toISOString();
   approval.resolvedBy = resolvedBy;

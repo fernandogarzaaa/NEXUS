@@ -169,6 +169,10 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
   const facilities = buildFacilities(rand);
   const vehicles = buildVehicles(rand, 14);
   const drivers = buildDrivers(rand, facilities, vehicles);
+  // Idle drivers (see IDLE_DRIVER_INDEXES) stay out of the default
+  // round-robin assignment pool, so they're genuinely free capacity for
+  // findAlternativeDriver rather than already-loaded "available" drivers.
+  const assignableDrivers = drivers.filter((d) => d.status !== "AVAILABLE");
 
   const shipments: Shipment[] = [];
   const routes: Route[] = [];
@@ -184,7 +188,7 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
     let destination = rand.pick(facilities);
     while (destination.id === origin.id) destination = rand.pick(facilities);
 
-    const driver = drivers[i % drivers.length];
+    const driver = assignableDrivers[i % assignableDrivers.length];
     const vehicle = vehicles.find((v) => v.id === driver.vehicleId) ?? rand.pick(vehicles);
     const priority = rand.weightedPick(priorityWeights);
     const dist = Math.max(18, distanceMiles(origin.location, destination.location));

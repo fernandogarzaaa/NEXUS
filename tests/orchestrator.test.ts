@@ -8,6 +8,35 @@ import { updatePolicy } from "@/lib/agents/policyEngine";
 describe("exception recovery orchestration", () => {
   beforeEach(() => resetState());
 
+  it("never executes or mutates state when the governing policy is OBSERVE", async () => {
+    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "OBSERVE", maxCostUsd: null });
+    const state = getState();
+    const shipmentBefore = { ...state.shipments.get(HERO_SHIPMENT_ID)! };
+
+    const { run, exception } = await detectDelayException(HERO_SHIPMENT_ID, 45, "DRIVER_DELAYED");
+
+    expect(run!.status).toBe("COMPLETED");
+    expect(run!.autonomyLevel).toBe("OBSERVE");
+    // Regression: OBSERVE must detect-and-report only, never execute the
+    // recovery option — evaluatePolicy returning requiresApproval:false for
+    // OBSERVE previously fell through to the autonomous-execution path.
+    // Recording the real delay's ETA impact is expected (that's just
+    // observing reality); what must NOT happen is the recovery option's
+    // own execution — the appointment must be untouched and the ETA must
+    // reflect only the raw delay, never an applied "improvement".
+    const shipmentAfter = state.shipments.get(HERO_SHIPMENT_ID)!;
+    const rawDelayedEta = new Date(new Date(shipmentBefore.currentEta).getTime() + 45 * 60_000).toISOString();
+    expect(shipmentAfter.currentEta).toBe(rawDelayedEta);
+    expect(shipmentAfter.appointment).toEqual(shipmentBefore.appointment);
+
+    const refreshedException = state.exceptions.get(exception.id)!;
+    expect(refreshedException.status).toBe("OPEN");
+    expect(refreshedException.resolutionSummary).toBeNull();
+
+    const steps = state.agentSteps.filter((s) => s.agentRunId === run!.id);
+    expect(steps.some((s) => s.label.includes("Observed only"))).toBe(true);
+  });
+
   it("selects a recovery option, executes it autonomously, and resolves the exception", async () => {
     const { exception, run } = await detectDelayException(HERO_SHIPMENT_ID, 45, "DRIVER_DELAYED");
     expect(run).not.toBeNull();
