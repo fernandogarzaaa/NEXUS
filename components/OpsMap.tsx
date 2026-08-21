@@ -54,7 +54,7 @@ export default function OpsMap({ facilities, shipments }: { facilities: Facility
             <text x={x} y={y - r - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text)">
               {f.city}
             </text>
-            <text x={x} y={y - r - 6 + 12} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
+            <text x={x} y={y - r - 6 + 12} textAnchor="middle" fontSize={11} fill="var(--text-muted)">
               {count} shipments
             </text>
           </g>

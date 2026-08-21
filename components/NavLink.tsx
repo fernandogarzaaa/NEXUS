@@ -16,7 +16,9 @@ export default function NavLink({ href, icon, label }: { href: string; icon: str
           : { color: "var(--text-muted)" }
       }
     >
-      <span className="w-4 text-center">{icon}</span>
+      <span className="w-4 text-center" aria-hidden="true">
+        {icon}
+      </span>
       {label}
     </Link>
   );

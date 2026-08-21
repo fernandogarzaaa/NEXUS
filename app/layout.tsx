@@ -31,14 +31,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex text-[15px]">
         <aside className="w-60 shrink-0 border-r flex flex-col" style={{ borderColor: "var(--border)", background: "var(--bg-panel)" }}>
           <div className="px-5 py-5 border-b" style={{ borderColor: "var(--border)" }}>
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2" aria-label="NEXUS — Agentic Logistics, go to Command Center">
               <span
+                aria-hidden="true"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-white font-bold text-sm"
                 style={{ background: "var(--accent)" }}
               >
                 N
               </span>
-              <div className="leading-tight">
+              <div className="leading-tight" aria-hidden="true">
                 <div className="font-semibold tracking-tight">NEXUS</div>
                 <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
                   Agentic Logistics
