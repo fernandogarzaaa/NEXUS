@@ -114,7 +114,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-40 tests across 8 files covering: exception detection and severity,
+44 tests across 10 files covering: exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),
