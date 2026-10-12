@@ -51,4 +51,14 @@ describe("policy engine", () => {
   it("rejects updates to non-editable or unknown policies", () => {
     expect(() => updatePolicy("NOT_A_REAL_ACTION", { autonomyLevel: "OBSERVE" })).toThrow();
   });
+
+  it("rejects invalid thresholds and levels instead of silently disabling escalation", () => {
+    for (const bad of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
+      expect(() => updatePolicy("APPOINTMENT_RESCHEDULE", { maxCostUsd: bad })).toThrow(/maxCostUsd/);
+    }
+    expect(() =>
+      updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "GOD_MODE" as unknown as "OBSERVE" })
+    ).toThrow(/Invalid autonomy level/);
+    expect(updatePolicy("APPOINTMENT_RESCHEDULE", { maxCostUsd: 0 }).maxCostUsd).toBe(0);
+  });
 });

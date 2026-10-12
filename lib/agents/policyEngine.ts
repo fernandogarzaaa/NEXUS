@@ -1,6 +1,14 @@
 import { getState } from "../domain/store";
 import type { AutonomyLevel, Policy } from "../domain/types";
 
+export const AUTONOMY_LEVELS: readonly AutonomyLevel[] = [
+  "OBSERVE",
+  "RECOMMEND",
+  "LOW_RISK_AUTONOMOUS",
+  "OPERATIONAL_AUTONOMOUS",
+  "HIGH_IMPACT_APPROVAL",
+];
+
 export interface PolicyDecision {
   policy: Policy;
   effectiveLevel: AutonomyLevel;
@@ -94,6 +102,19 @@ export function updatePolicy(
   const policy = state.policies.get(actionType);
   if (!policy) throw new Error(`Unknown policy action type: ${actionType}`);
   if (!policy.editable) throw new Error(`Policy "${policy.label}" is not editable`);
+  // Server Actions are callable with arbitrary arguments, so validate here:
+  // an unknown level or a NaN/negative/infinite threshold would silently
+  // disable cost escalation (`cost > NaN` is always false).
+  if (updates.autonomyLevel !== undefined && !AUTONOMY_LEVELS.includes(updates.autonomyLevel)) {
+    throw new Error(`Invalid autonomy level: ${String(updates.autonomyLevel)}`);
+  }
+  if (
+    updates.maxCostUsd !== undefined &&
+    updates.maxCostUsd !== null &&
+    (typeof updates.maxCostUsd !== "number" || !Number.isFinite(updates.maxCostUsd) || updates.maxCostUsd < 0)
+  ) {
+    throw new Error("maxCostUsd must be null or a finite, non-negative number");
+  }
   const updated: Policy = { ...policy, ...updates };
   state.policies.set(actionType, updated);
   return updated;
