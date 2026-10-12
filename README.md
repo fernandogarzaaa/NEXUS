@@ -72,8 +72,14 @@ npm install
 |---|---|
 | `ANTHROPIC_API_KEY` | If set, enriches recovery rationale text via Claude. Omit to run fully offline. |
 | `ANTHROPIC_MODEL` | Overrides the model used for narration (default `claude-sonnet-5`). |
+| `NEXUS_ACCESS_TOKEN` | Shared access token. When set, every page and Server Action requires signing in at `/login` with this token (12 h `HttpOnly`, `SameSite=Lax` session cookie). |
+| `NEXUS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a public throwaway demo without a token. Without a token and without this flag, production builds refuse all state-changing actions (approve/reject, reset, run scenario, policy edits); `next dev` and tests stay open. |
 
-No `.env` file is required for the default (offline) experience.
+No `.env` file is required for the default (offline) experience in `next dev`.
+
+**Deploying publicly:** set `NEXUS_ACCESS_TOKEN` (or explicitly opt out with
+`NEXUS_ALLOW_UNAUTHENTICATED=1`). The gate is enforced twice: in `proxy.ts`
+(Next.js 16's replacement for `middleware.ts`) and inside every Server Action.
 
 ## Running the application
 
@@ -114,7 +120,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-44 tests across 10 files covering: exception detection and severity,
+58 tests across 11 files covering: the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),
