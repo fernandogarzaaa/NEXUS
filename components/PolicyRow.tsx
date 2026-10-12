@@ -12,11 +12,22 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
   const [maxCost, setMaxCost] = useState<string>(policy.maxCostUsd === null ? "" : String(policy.maxCostUsd));
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function save() {
     const parsed = maxCost.trim() === "" ? null : Number(maxCost);
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+      setError("Enter a non-negative amount, or leave blank for no limit.");
+      return;
+    }
+    setError(null);
     startTransition(async () => {
-      await updatePolicyAction(policy.actionType, level, parsed);
+      try {
+        await updatePolicyAction(policy.actionType, level, parsed);
+      } catch {
+        setError("Save failed. Your session may have expired; reload and try again.");
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     });
@@ -36,6 +47,7 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
       <td>
         {policy.editable ? (
           <select
+            aria-label={`Autonomy level for ${policy.label}`}
             value={level}
             onChange={(e) => setLevel(e.target.value as AutonomyLevel)}
             className="rounded-md border px-2 py-1 text-[12.5px]"
@@ -56,6 +68,8 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
           <input
             type="number"
             min={0}
+            aria-label={`Max cost in USD for ${policy.label}`}
+            aria-invalid={error ? true : undefined}
             value={maxCost}
             onChange={(e) => setMaxCost(e.target.value)}
             placeholder="no limit"
@@ -69,6 +83,7 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
       <td>
         {policy.editable && (
           <button
+            type="button"
             onClick={save}
             disabled={pending}
             className="rounded-md border px-3 py-1 text-[12.5px] font-medium disabled:opacity-50"
@@ -76,6 +91,11 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
           >
             {saved ? "Saved ✓" : pending ? "Saving…" : "Save"}
           </button>
+        )}
+        {error && (
+          <p role="alert" className="mt-1 text-[12px]" style={{ color: "var(--danger)" }}>
+            {error}
+          </p>
         )}
       </td>
     </tr>

@@ -33,6 +33,7 @@ function Button({
         : { background: "var(--bg-panel)", color: "var(--text)", borderColor: "var(--border)" };
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       aria-busy={busy}
@@ -55,13 +56,21 @@ export default function DemoControls() {
   const [pending, startTransition] = useTransition();
   const [activeAction, setActiveAction] = useState<ActionKey | null>(null);
   const [justCompleted, setJustCompleted] = useState<ActionKey | null>(null);
+  const [failed, setFailed] = useState<ActionKey | null>(null);
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function run(key: ActionKey, action: () => Promise<void>) {
     setActiveAction(key);
     setJustCompleted(null);
+    setFailed(null);
     startTransition(async () => {
-      await action();
+      try {
+        await action();
+      } catch {
+        setActiveAction(null);
+        setFailed(key);
+        return;
+      }
       setActiveAction(null);
       setJustCompleted(key);
       if (clearTimer.current) clearTimeout(clearTimer.current);
@@ -74,7 +83,12 @@ export default function DemoControls() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {failed && !pending && (
+        <span role="alert" className="text-[12px] font-medium" style={{ color: "var(--danger)" }}>
+          {LABELS[failed]} failed. Your session may have expired; reload and try again.
+        </span>
+      )}
       {justCompleted && !pending && (
         <span
           role="status"
