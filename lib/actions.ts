@@ -9,33 +9,39 @@ import { runHeroDemo } from "./sim/heroDemo";
 import { updatePolicy } from "./agents/policyEngine";
 import { getState } from "./domain/store";
 import type { AutonomyLevel } from "./domain/types";
+import { assertAuthorized } from "./authServer";
 
 function refreshAll() {
   revalidatePath("/", "layout");
 }
 
 export async function runHeroDemoAction() {
+  await assertAuthorized();
   await runHeroDemo();
   refreshAll();
 }
 
 export async function simulateRandomEventAction() {
+  await assertAuthorized();
   const seed = Date.now() % 1_000_000;
   await simulateRandomEvent(seed);
   refreshAll();
 }
 
 export async function runDispatchSweepAction() {
+  await assertAuthorized();
   runDispatchSweep();
   refreshAll();
 }
 
 export async function evaluateDispatchAction(shipmentId: string) {
+  await assertAuthorized();
   evaluateDispatchAssignment(shipmentId);
   refreshAll();
 }
 
 export async function decideApprovalAction(approvalId: string, approve: boolean, resolvedBy = "Ops Manager (demo user)") {
+  await assertAuthorized();
   const state = getState();
   const approval = state.approvals.get(approvalId);
   if (!approval) throw new Error(`Unknown approval ${approvalId}`);
@@ -53,11 +59,13 @@ export async function decideApprovalAction(approvalId: string, approve: boolean,
 }
 
 export async function updatePolicyAction(actionType: string, autonomyLevel: AutonomyLevel, maxCostUsd: number | null) {
+  await assertAuthorized();
   updatePolicy(actionType, { autonomyLevel, maxCostUsd });
   refreshAll();
 }
 
 export async function resetDemoAction() {
+  await assertAuthorized();
   resetState();
   refreshAll();
 }
