@@ -120,7 +120,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-58 tests across 11 files covering: the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), exception detection and severity,
+59 tests across 11 files covering: the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),
