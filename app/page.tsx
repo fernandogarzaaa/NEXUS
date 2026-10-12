@@ -37,7 +37,7 @@ export default function CommandCenterPage() {
         subtitle="Live view of the NEXUS agentic operations layer — observe, decide, act, verify, escalate."
         actions={<DemoControls />}
       />
-      <div className="p-8 flex flex-col gap-6">
+      <div className="p-4 md:p-8 flex flex-col gap-6">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <Kpi label="Total Shipments" value={String(summary.totalShipments)} />
           <Kpi label="Active Shipments" value={String(summary.activeShipments)} />

@@ -10,7 +10,7 @@ export default function ShipmentsPage() {
   return (
     <div>
       <PageHeader title="Shipments" subtitle={`${shipments.length} shipments across the active demo network.`} />
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="panel scroll-x">
           <table className="data-table">
             <thead>

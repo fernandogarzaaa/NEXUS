@@ -49,7 +49,7 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
           </>
         }
       />
-      <div className="p-8 flex flex-col gap-6">
+      <div className="p-4 md:p-8 flex flex-col gap-6">
         <div className="panel p-5 grid grid-cols-2 md:grid-cols-4 gap-5">
           <Field label="Driver" value={driver ? `${driver.name} (${driver.id})` : "Unassigned"} />
           <Field label="Vehicle" value={vehicle ? `${vehicle.type.replace(/_/g, " ")} — ${vehicle.id}` : "—"} />

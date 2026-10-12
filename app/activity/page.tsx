@@ -37,7 +37,7 @@ export default function ActivityPage() {
         title="Agent Activity"
         subtitle="A structured, chronological record of every agent decision — no chain-of-thought, only observable phase transitions and outcomes."
       />
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="panel p-5">
           {entries.length === 0 ? (
             <p className="text-sm py-6 text-center" style={{ color: "var(--text-muted)" }}>
