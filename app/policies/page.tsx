@@ -13,7 +13,7 @@ export default function PoliciesPage() {
         title="Policy Configuration"
         subtitle="Configurable autonomy per action type — this is what makes NEXUS controlled autonomy, not unrestricted AI execution."
       />
-      <div className="p-8 flex flex-col gap-6">
+      <div className="p-4 md:p-8 flex flex-col gap-6">
         <div className="panel scroll-x">
           <table className="data-table">
             <thead>

@@ -13,7 +13,7 @@ export default function ExceptionsPage() {
     <div>
       <AutoRefresh intervalMs={5000} />
       <PageHeader title="Exception Queue" subtitle="Every operational exception detected by NEXUS, its recommended recovery, and current status." />
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="panel scroll-x">
           <table className="data-table">
             <thead>

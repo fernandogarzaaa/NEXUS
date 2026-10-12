@@ -19,7 +19,7 @@ export default function ApprovalsPage() {
         title="Approval Queue"
         subtitle="High-impact or over-threshold agent actions wait here for a human decision before executing."
       />
-      <div className="p-8 flex flex-col gap-6">
+      <div className="p-4 md:p-8 flex flex-col gap-6">
         <div>
           <h2 className="font-semibold text-sm mb-3">Pending ({pending.length})</h2>
           {pending.length === 0 ? (

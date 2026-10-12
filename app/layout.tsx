@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import { getSummary } from "@/lib/queries";
 import NavLink from "@/components/NavLink";
+import { canViewPages } from "@/lib/authServer";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -24,13 +25,34 @@ const NAV = [
   { href: "/policies", label: "Policy Config", icon: "⚙" },
 ];
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const htmlClass = `${geistSans.variable} ${geistMono.variable} h-full antialiased`;
+  if (!(await canViewPages())) {
+    // Signed-out view (/login): no sidebar, no live counts.
+    return (
+      <html lang="en" className={htmlClass}>
+        <body className="min-h-full flex text-[15px]">
+          <main className="flex-1 min-w-0 flex">{children}</main>
+        </body>
+      </html>
+    );
+  }
   const summary = getSummary();
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex text-[15px]">
-        <aside className="w-60 shrink-0 border-r flex flex-col" style={{ borderColor: "var(--border)", background: "var(--bg-panel)" }}>
-          <div className="px-5 py-5 border-b" style={{ borderColor: "var(--border)" }}>
+    <html lang="en" className={htmlClass}>
+      <body className="min-h-full flex flex-col md:flex-row text-[15px]">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:px-3 focus:py-2 focus:text-white"
+          style={{ background: "var(--accent)" }}
+        >
+          Skip to content
+        </a>
+        <aside
+          className="w-full md:w-60 shrink-0 border-b md:border-b-0 md:border-r flex flex-col"
+          style={{ borderColor: "var(--border)", background: "var(--bg-panel)" }}
+        >
+          <div className="px-5 py-4 md:py-5 border-b" style={{ borderColor: "var(--border)" }}>
             <Link href="/" className="flex items-center gap-2" aria-label="NEXUS — Agentic Logistics, go to Command Center">
               <span
                 aria-hidden="true"
@@ -47,12 +69,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </Link>
           </div>
-          <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
+          <nav aria-label="Main" className="md:flex-1 px-3 py-2 md:py-4 flex flex-row md:flex-col gap-0.5 overflow-x-auto">
             {NAV.map((item) => (
               <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
             ))}
           </nav>
-          <div className="px-4 py-4 border-t text-[11px]" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+          <div className="hidden md:block px-4 py-4 border-t text-[11px]" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
             {summary.pendingApprovals > 0 ? (
               <Link href="/approvals" className="flex items-center gap-1.5 font-medium" style={{ color: "var(--warn)" }}>
                 <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--warn)" }} />
@@ -64,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="mt-1">Seed #{summary.seed}</div>
           </div>
         </aside>
-        <main className="flex-1 min-w-0">{children}</main>
+        <main id="main" className="flex-1 min-w-0">{children}</main>
       </body>
     </html>
   );
