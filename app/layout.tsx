@@ -5,6 +5,7 @@ import "./globals.css";
 import { getSummary } from "@/lib/queries";
 import NavLink from "@/components/NavLink";
 import { canViewPages } from "@/lib/authServer";
+import { actionsDisabledByConfig } from "@/lib/auth";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
   const summary = getSummary();
+  const readOnly = actionsDisabledByConfig(process.env);
   return (
     <html lang="en" className={htmlClass}>
       <body className="min-h-full flex flex-col md:flex-row text-[15px]">
@@ -86,7 +88,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="mt-1">Seed #{summary.seed}</div>
           </div>
         </aside>
-        <main id="main" className="flex-1 min-w-0">{children}</main>
+        <main id="main" className="flex-1 min-w-0">
+          {readOnly && (
+            <div
+              role="status"
+              className="mx-4 mt-4 md:mx-8 rounded-lg border px-4 py-2.5 text-[13px]"
+              style={{ borderColor: "var(--warn)", color: "var(--text)", background: "var(--bg-panel)" }}
+            >
+              <strong>Read-only:</strong> actions (run scenario, approvals, policy edits, reset) are
+              disabled because <code>NEXUS_ACCESS_TOKEN</code> is not set. Set a token and sign in at{" "}
+              <code>/login</code>, or set <code>NEXUS_ALLOW_UNAUTHENTICATED=1</code> for a throwaway
+              demo, then restart.
+            </div>
+          )}
+          {children}
+        </main>
       </body>
     </html>
   );
