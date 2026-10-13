@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SESSION_COOKIE,
   UnauthorizedError,
+  actionsDisabledByConfig,
   configuredToken,
   decide,
   isValidSession,
@@ -174,5 +175,26 @@ describe("proxy", () => {
   it("does nothing when no token is configured", async () => {
     delete process.env.NEXUS_ACCESS_TOKEN;
     expect((await run("/approvals", "POST")).headers.get("x-middleware-next")).toBe("1");
+  });
+});
+
+describe("actionsDisabledByConfig (read-only banner)", () => {
+  it("is true only for a production build with no token and no opt-out", () => {
+    expect(actionsDisabledByConfig({ NODE_ENV: "production" })).toBe(true);
+    expect(actionsDisabledByConfig({ NODE_ENV: "production", NEXUS_ACCESS_TOKEN: "  " })).toBe(true);
+    expect(actionsDisabledByConfig({ NODE_ENV: "production", NEXUS_ACCESS_TOKEN: "t" })).toBe(false);
+    expect(actionsDisabledByConfig({ NODE_ENV: "production", NEXUS_ALLOW_UNAUTHENTICATED: "1" })).toBe(false);
+    expect(actionsDisabledByConfig({ NODE_ENV: "development" })).toBe(false);
+    expect(actionsDisabledByConfig({ NODE_ENV: "test" })).toBe(false);
+  });
+
+  it("agrees with decide(): disabled exactly when decide() says not_configured", async () => {
+    for (const env of [
+      { NODE_ENV: "production" },
+      { NODE_ENV: "production", NEXUS_ALLOW_UNAUTHENTICATED: "1" },
+      { NODE_ENV: "development" },
+    ]) {
+      expect(actionsDisabledByConfig(env)).toBe((await decide(env, undefined)) === "not_configured");
+    }
   });
 });

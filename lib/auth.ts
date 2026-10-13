@@ -76,6 +76,20 @@ export async function decide(env: AuthEnv, cookie: string | undefined): Promise<
   return "allow";
 }
 
+/**
+ * True when no request can run Server Actions because the deployment is a
+ * production build with neither a token nor the explicit opt-out. Pages still
+ * render, so the UI must say it is read-only instead of letting every button
+ * fail with a generic error (production builds redact the server message).
+ */
+export function actionsDisabledByConfig(env: AuthEnv): boolean {
+  return (
+    !configuredToken(env) &&
+    env.NEXUS_ALLOW_UNAUTHENTICATED !== "1" &&
+    env.NODE_ENV === "production"
+  );
+}
+
 export class UnauthorizedError extends Error {
   readonly reason: Exclude<AuthDecision, "allow">;
 
