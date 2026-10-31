@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- `next` 16.3.8 -> 16.4.3 (pinned): fixes GHSA advisories for unauthenticated
+  RCE in the Image Optimization API with SVGs, RCE in `use cache` functions
+  returning typed arrays, and a Server Actions DoS (all `>=16.0.0 <=16.4.0`).
+- `zod` -> ^4.6.7: fixes memory exhaustion when validating oversized
+  constrained collections (`<4.6.6`). `npm audit --omit=dev` is now clean.
+
 ### Added
 - `StateRepository` interface (`lib/domain/repository.ts`) extracted from the
   in-memory store; `lib/domain/store.ts` is now a facade with `loadState()` /
