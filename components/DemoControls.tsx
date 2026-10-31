@@ -52,7 +52,7 @@ function Button({
   );
 }
 
-export default function DemoControls() {
+export default function DemoControls({ canOperate = true, canAdmin = true }: { canOperate?: boolean; canAdmin?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [activeAction, setActiveAction] = useState<ActionKey | null>(null);
   const [justCompleted, setJustCompleted] = useState<ActionKey | null>(null);
@@ -81,6 +81,14 @@ export default function DemoControls() {
   useEffect(() => () => {
     if (clearTimer.current) clearTimeout(clearTimer.current);
   }, []);
+
+  if (!canOperate) {
+    return (
+      <span role="status" className="text-[12px]" style={{ color: "var(--text-muted)" }}>
+        View only: running scenarios needs the operator role.
+      </span>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -114,6 +122,7 @@ export default function DemoControls() {
       >
         {LABELS.simulate}
       </Button>
+      {canAdmin && (
       <Button
         variant="ghost"
         disabled={pending}
@@ -126,6 +135,7 @@ export default function DemoControls() {
       >
         {LABELS.reset}
       </Button>
+      )}
       <Button variant="primary" disabled={pending} busy={activeAction === "demo"} onClick={() => run("demo", runHeroDemoAction)}>
         {LABELS.demo}
       </Button>

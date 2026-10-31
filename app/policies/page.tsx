@@ -2,11 +2,14 @@ import PageHeader from "@/components/PageHeader";
 import PolicyRow from "@/components/PolicyRow";
 import { listPolicies } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { currentPrincipal } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function PoliciesPage() {
   await loadState();
+  const principal = await currentPrincipal();
+  const canEdit = Boolean(principal?.roles.includes("admin"));
   const policies = listPolicies();
 
   return (
@@ -17,6 +20,11 @@ export default async function PoliciesPage() {
       />
       <div className="p-4 md:p-8 flex flex-col gap-6">
         <div className="panel scroll-x">
+          {!canEdit && (
+            <p role="status" className="px-5 pt-4 text-[13px]" style={{ color: "var(--text-muted)" }}>
+              View only: editing policies needs the admin role.
+            </p>
+          )}
           <table className="data-table">
             <thead>
               <tr>
@@ -29,7 +37,7 @@ export default async function PoliciesPage() {
             </thead>
             <tbody>
               {policies.map((p) => (
-                <PolicyRow key={p.actionType} policy={p} />
+                <PolicyRow key={p.actionType} policy={p} canEdit={canEdit} />
               ))}
             </tbody>
           </table>

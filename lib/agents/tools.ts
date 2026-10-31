@@ -375,6 +375,55 @@ export function applyEtaImprovement(input: z.infer<typeof applyEtaImprovementSch
   return shipment;
 }
 
+// -- Human decisions -----------------------------------------------------------
+
+const decideApprovalSchema = z.object({
+  approvalId: z.string().min(1),
+  approve: z.boolean(),
+  decidedBy: z.string().min(1),
+});
+
+/**
+ * Record a human decision on an approval. Idempotent: an approval that is
+ * no longer PENDING is returned unchanged with `changed: false`, so a
+ * double-click or stale page cannot re-run the resume path.
+ */
+export function decideApproval(input: z.infer<typeof decideApprovalSchema>): { approval: Approval; changed: boolean } {
+  const { approvalId, approve, decidedBy } = validate("decideApproval", decideApprovalSchema, input);
+  const approval = getState().approvals.get(approvalId);
+  if (!approval) throw new ToolExecutionError("decideApproval", `unknown approval ${approvalId}`);
+  if (approval.status !== "PENDING") return { approval, changed: false };
+  approval.status = approve ? "APPROVED" : "REJECTED";
+  approval.resolvedAt = nowIso();
+  approval.resolvedBy = decidedBy;
+  audit({
+    actorType: "HUMAN",
+    actorId: decidedBy,
+    action: approve ? "APPROVE_ACTION" : "REJECT_ACTION",
+    entityType: "Approval",
+    entityId: approvalId,
+    agentRunId: approval.agentRunId,
+    detail: `${approve ? "Approved" : "Rejected"} ${approval.actionType} for ${approval.shipmentId}: ${approval.summary}`,
+  });
+  return { approval, changed: true };
+}
+
+const recordHumanActionSchema = z.object({
+  actorId: z.string().min(1),
+  action: z.string().min(1),
+  entityType: z.string().min(1),
+  entityId: z.string().min(1),
+  detail: z.string(),
+});
+
+/** Audit a human change made outside the agent tools (policy edit, reset). */
+export function recordHumanAction(input: z.infer<typeof recordHumanActionSchema>): AuditEvent {
+  const p = validate("recordHumanAction", recordHumanActionSchema, input);
+  const event: AuditEvent = { id: nextId("AUD"), timestamp: nowIso(), actorType: "HUMAN", agentRunId: null, ...p };
+  getState().auditLog.push(event);
+  return event;
+}
+
 // -- Access logging ----------------------------------------------------------
 
 const recordApiAccessSchema = z.object({

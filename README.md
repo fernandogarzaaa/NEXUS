@@ -72,6 +72,8 @@ npm install
 |---|---|
 | `ANTHROPIC_API_KEY` | If set, enriches recovery rationale text via Claude. Omit to run fully offline. |
 | `ANTHROPIC_MODEL` | Overrides the model used for narration (default `claude-sonnet-5`). |
+| `NEXUS_USERS` | **Pilot mode.** JSON array of named users `{username, displayName, passwordHash, tenantId, roles}`; roles are `viewer`, `operator` (run scenarios, decide approvals), `admin` (also edit policies, reset). Takes precedence over `NEXUS_ACCESS_TOKEN`. Hash passwords with `npm run user:hash`. |
+| `NEXUS_SESSION_SECRET` | Required with `NEXUS_USERS`: at least 32 random characters used to sign session cookies. |
 | `NEXUS_ACCESS_TOKEN` | Shared access token. When set, every page and Server Action requires signing in at `/login` with this token (12 h `HttpOnly`, `SameSite=Lax` session cookie). |
 | `NEXUS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a public throwaway demo without a token. Without a token and without this flag, production builds refuse all state-changing actions (approve/reject, reset, run scenario, policy edits); `next dev` and tests stay open. |
 | `NEXUS_STATE_BACKEND` | `memory` (default: in-process, resets on restart) or `postgres` (durable). See "State backend" below. |
@@ -85,8 +87,13 @@ npm install
 
 No `.env` file is required for the default (offline) experience in `next dev`.
 
-**Deploying publicly:** set `NEXUS_ACCESS_TOKEN` (or explicitly opt out with
-`NEXUS_ALLOW_UNAUTHENTICATED=1`). The gate is enforced twice: in `proxy.ts`
+**Deploying publicly:** for a pilot with real data, configure `NEXUS_USERS`
++ `NEXUS_SESSION_SECRET` + `NEXUS_TENANT_ID`: every approval, policy edit
+and reset is then attributed to a named person and gated by role, and
+users of another tenant cannot sign in. `NEXUS_ACCESS_TOKEN` is a shared
+demo secret, not production auth: everyone who knows it is the same
+unnamed user. (Or explicitly opt out with `NEXUS_ALLOW_UNAUTHENTICATED=1`
+for a throwaway demo.) The gate is enforced twice: in `proxy.ts`
 (Next.js 16's replacement for `middleware.ts`) and inside every Server Action.
 
 ### State backend

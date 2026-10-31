@@ -5,11 +5,14 @@ import { ApprovalStatusBadge } from "@/components/badges";
 import ApprovalActions from "@/components/ApprovalActions";
 import { listApprovals } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { currentPrincipal } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
   await loadState();
+  const principal = await currentPrincipal();
+  const canDecide = Boolean(principal?.roles.some((r) => r === "operator" || r === "admin"));
   const approvals = listApprovals();
   const pending = approvals.filter((a) => a.status === "PENDING");
   const resolved = approvals.filter((a) => a.status !== "PENDING");
@@ -44,7 +47,7 @@ export default async function ApprovalsPage() {
                       </div>
                       <p className="text-[13px] font-medium">{a.summary}</p>
                     </div>
-                    <ApprovalActions approvalId={a.id} />
+                    <ApprovalActions approvalId={a.id} canDecide={canDecide} />
                   </div>
                   <dl className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t text-[13px]" style={{ borderColor: "var(--border)" }}>
                     <div>

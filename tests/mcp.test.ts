@@ -114,7 +114,7 @@ describe("MCP endpoint", () => {
 
     // There is no MCP tool that decides approvals; a person does it in the UI.
     expect((await client.listTools()).tools.some((t) => /approve|decide/.test(t.name))).toBe(false);
-    await decideApprovalAction(res.approvalId, true, "Ops Manager Jane Citizen");
+    await decideApprovalAction(res.approvalId, true);
     expect(state.shipments.get(HERO_SHIPMENT_ID)!.driverId).not.toBe(HERO_DRIVER_ID);
     expect(state.agentRuns.get(res.agentRunId)!.status).toBe("COMPLETED");
   });

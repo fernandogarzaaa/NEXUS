@@ -12,7 +12,8 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:seed": "tsx scripts/db-seed.ts",
     "reconcile": "tsx scripts/reconcile.ts",
-    "migrate:dry-run": "tsx scripts/migrate-dry-run.ts"
+    "migrate:dry-run": "tsx scripts/migrate-dry-run.ts",
+    "user:hash": "tsx scripts/hash-password.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

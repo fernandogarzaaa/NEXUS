@@ -20,10 +20,10 @@ describe("decideApprovalAction", () => {
     const approval = Array.from(state.approvals.values()).find((a) => a.agentRunId === run!.id)!;
     expect(approval).toBeDefined();
 
-    await decideApprovalAction(approval.id, true, "First Click");
+    await decideApprovalAction(approval.id, true);
     const shipmentDriverAfterFirst = state.shipments.get(HERO_SHIPMENT_ID)!.driverId;
     expect(shipmentDriverAfterFirst).not.toBe(HERO_DRIVER_ID);
-    expect(approval.resolvedBy).toBe("First Click");
+    expect(approval.resolvedBy).toBe("Unauthenticated demo user"); // from the session, not the caller
     const runAfterFirst = state.agentRuns.get(run!.id)!;
     expect(runAfterFirst.status).toBe("COMPLETED");
 
@@ -32,11 +32,13 @@ describe("decideApprovalAction", () => {
     // used to re-run the resume path: re-executing the tool call a second
     // time, or (for dispatch) flipping an already-completed run to
     // ESCALATED because pendingDispatchProposals had already been cleared.
-    await decideApprovalAction(approval.id, false, "Stale Second Click");
+    await decideApprovalAction(approval.id, false);
 
-    expect(approval.resolvedBy).toBe("First Click"); // unchanged
     expect(approval.status).toBe("APPROVED"); // unchanged
     expect(state.agentRuns.get(run!.id)!.status).toBe("COMPLETED"); // not flipped to ESCALATED
     expect(state.shipments.get(HERO_SHIPMENT_ID)!.driverId).toBe(shipmentDriverAfterFirst);
+    // The decision itself is audited once, as a human action.
+    const decisions = state.auditLog.filter((a) => a.entityId === approval.id && a.actorType === "HUMAN");
+    expect(decisions.map((a) => a.action)).toEqual(["APPROVE_ACTION"]);
   });
 });

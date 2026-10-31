@@ -24,6 +24,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under an autonomous policy, and is idempotent per shipment.
 - `authenticateApiKey` split from scope checks; `request:actions` write
   scope (never implied by `read:*`); `hasRole`.
+- Named UI users with roles (pilot mode): `NEXUS_USERS` (scrypt password
+  hashes via `npm run user:hash`, tenant, roles `viewer` / `operator` /
+  `admin`) + `NEXUS_SESSION_SECRET`. HMAC-signed session cookie bound to user,
+  tenant, expiry and a password fingerprint (changing a password or removing
+  a user ends their sessions). Users of another tenant cannot sign in.
+  Operators run scenarios and decide approvals; admins also edit policies
+  and reset. The UI shows who is signed in, a sign-out button, and disables
+  controls the role cannot use. Shared-token and open demo modes keep
+  working and are labelled as unnamed users.
+
+### Security
+- `decideApprovalAction` no longer accepts the approver's name from the
+  caller (Server Action arguments are caller-controlled); the approver is
+  the signed-in principal.
+- Approval decisions, policy edits and resets now go through the tool layer
+  and write audit events (`APPROVE_ACTION` / `REJECT_ACTION`,
+  `UPDATE_POLICY`, `RESET_STATE`) with the human actor.
 
 ### Security
 - `next` 16.3.8 -> 16.4.3 (pinned): fixes GHSA advisories for unauthenticated
