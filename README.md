@@ -225,7 +225,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-100 tests across 17 files covering: the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
+128 tests across 20 files covering: named users, signed sessions and role gating, knowledge retrieval (citations, NOT_FOUND, stale/missing/too-old sources), the MCP server (identity, tool visibility per scope and role, audit, approval-gated writes), the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),

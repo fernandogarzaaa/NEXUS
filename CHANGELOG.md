@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
 ### Added
 - Knowledge retrieval over canonical records and ops docs (`lib/knowledge/`,
   `GET /api/v1/ask`, scope `read:knowledge`): deterministic BM25, extractive
