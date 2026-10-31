@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Knowledge retrieval over canonical records and ops docs (`lib/knowledge/`,
+  `GET /api/v1/ask`, scope `read:knowledge`): deterministic BM25, extractive
+  answers where every sentence carries a numbered citation with source id
+  and timestamp; unknown ids, unrelated questions and stale (hash-changed),
+  missing or too-old sources return `NOT_FOUND`. Ops docs in `docs/ops/`
+  (`NEXUS_OPS_DOCS_DIR`); optional `NEXUS_RAG_MAX_AGE_HOURS`.
+
 ### Security
 - `next` 16.3.8 -> 16.4.3 (pinned): fixes GHSA advisories for unauthenticated
   RCE in the Image Optimization API with SVGs, RCE in `use cache` functions

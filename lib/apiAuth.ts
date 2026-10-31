@@ -28,6 +28,7 @@ export const API_SCOPES = [
   "read:policies",
   "read:agent-runs",
   "read:audit",
+  "read:knowledge",
 ] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 

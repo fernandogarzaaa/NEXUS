@@ -79,6 +79,8 @@ npm install
 | `DATABASE_SSL` | Set to `1` for TLS with certificate verification against the system trust store. |
 | `NEXUS_TEST_DATABASE_URL` | A throwaway database the Postgres integration tests may wipe. Unset: those tests are skipped. |
 | `NEXUS_API_KEYS` | JSON array of scoped API keys for the read API (`/api/v1`). Unset: the API answers 503. See [`docs/architecture/api.md`](docs/architecture/api.md). |
+| `NEXUS_OPS_DOCS_DIR` | Directory of ops documents for retrieval (default `docs/ops`). |
+| `NEXUS_RAG_MAX_AGE_HOURS` | Optional: retrieval refuses records whose own timestamp is older than this. |
 | `NEXUS_TENANT_ID` | Tenant this deployment serves (default `demo`); API keys for another tenant are refused. |
 
 No `.env` file is required for the default (offline) experience in `next dev`.
@@ -140,6 +142,16 @@ Bearer <keyId>.<secret>`). Every request with a recognised key is written
 to the audit log. Routes are backed by `lib/queries.ts` and the tool layer,
 never by direct store access. Full route table, scopes and key format:
 [`docs/architecture/api.md`](docs/architecture/api.md).
+
+### Knowledge retrieval (RAG)
+
+`GET /api/v1/ask?q=…` answers from canonical records and the ops documents
+in `docs/ops/`. Every sentence of an answer is a retrieved passage with a
+numbered citation naming the source record and its timestamp. Unknown ids,
+unrelated questions, and sources that changed or disappeared since
+indexing return `NOT_FOUND` instead of a guess. Deterministic BM25, no
+LLM, no external service. Details:
+[`docs/architecture/knowledge.md`](docs/architecture/knowledge.md).
 
 ### Legacy migration harness (dry run only)
 
@@ -215,6 +227,8 @@ lib/apiAuth.ts            Scoped API-key auth (pure) for the public read API
 lib/api/handler.ts        Authenticated, audited, read-only route wrapper
 app/api/v1/               Public read API routes
 lib/migration/            Legacy migration harness (dry run only)
+lib/knowledge/            Cited, verified retrieval over canonical records and ops docs
+docs/ops/                  Ops documents indexed for retrieval
 adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
 db/migrations/             Forward-only SQL migrations
 scripts/                   db:migrate / db:seed entry points

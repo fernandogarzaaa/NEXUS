@@ -26,8 +26,8 @@ real subject, a tenant, roles and scopes:
   database is not built.
 - Scopes: `read:summary`, `read:shipments`, `read:drivers`,
   `read:vehicles`, `read:facilities`, `read:exceptions`,
-  `read:approvals`, `read:policies`, `read:agent-runs`, `read:audit`, or
-  `read:*`. A missing scope answers `403 insufficient_scope`.
+  `read:approvals`, `read:policies`, `read:agent-runs`, `read:audit`,
+  `read:knowledge`, or `read:*`. A missing scope answers `403 insufficient_scope`.
 - Roles (`viewer`, `operator`, `admin`) are recorded on the key now and
   will gate the write routes when those are added behind the approval
   queue.
@@ -61,6 +61,7 @@ stored as the audit entity id.
 | `GET /policies` | `read:policies` | |
 | `GET /agent-runs` | `read:agent-runs` | `status`, `agentType`, `limit`, `offset` |
 | `GET /audit` | `read:audit` | `entityId`, `action`, `limit`, `offset` (newest first) |
+| `GET /ask` | `read:knowledge` | `q` (required, ≤500 chars), `maxAgeHours`, `types` (comma list). Cited answer or `NOT_FOUND`; see `knowledge.md` |
 
 List responses: `{ "data": { "items": [...], "page": { "limit", "offset", "total" } }, "meta": {...} }`.
 `limit` defaults to 100, max 500. Errors: `{ "error": { "code", "message" }, "meta": { "requestId" } }`.
