@@ -375,6 +375,43 @@ export function applyEtaImprovement(input: z.infer<typeof applyEtaImprovementSch
   return shipment;
 }
 
+// -- Access logging ----------------------------------------------------------
+
+const recordApiAccessSchema = z.object({
+  keyId: z.string().min(1),
+  subject: z.string().min(1),
+  tenantId: z.string().min(1),
+  method: z.string().min(1),
+  path: z.string().min(1),
+  scope: z.string().min(1),
+  outcome: z.enum(["ALLOWED", "DENIED"]),
+  status: z.number().int().min(100).max(599),
+  requestId: z.string().min(1),
+});
+
+/**
+ * Every public API request made with a recognised key is written to the
+ * audit log, allowed or denied, through the same path as every other
+ * mutation. The actor is the key's subject (a real person or service), not
+ * the key itself.
+ */
+export function recordApiAccess(input: z.infer<typeof recordApiAccessSchema>): AuditEvent {
+  const p = validate("recordApiAccess", recordApiAccessSchema, input);
+  const event: AuditEvent = {
+    id: nextId("AUD"),
+    timestamp: nowIso(),
+    actorType: "HUMAN",
+    actorId: `${p.subject} (api-key ${p.keyId}, tenant ${p.tenantId})`,
+    action: p.outcome === "ALLOWED" ? "API_READ" : "API_ACCESS_DENIED",
+    entityType: "ApiRequest",
+    entityId: p.requestId,
+    agentRunId: null,
+    detail: `${p.method} ${p.path} [${p.scope}] -> ${p.status}`,
+  };
+  getState().auditLog.push(event);
+  return event;
+}
+
 export function resolveException(
   exceptionId: string,
   agentRunId: string,

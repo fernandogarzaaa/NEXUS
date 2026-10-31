@@ -78,6 +78,8 @@ npm install
 | `DATABASE_URL` | Postgres connection string. Required when `NEXUS_STATE_BACKEND=postgres`. |
 | `DATABASE_SSL` | Set to `1` for TLS with certificate verification against the system trust store. |
 | `NEXUS_TEST_DATABASE_URL` | A throwaway database the Postgres integration tests may wipe. Unset: those tests are skipped. |
+| `NEXUS_API_KEYS` | JSON array of scoped API keys for the read API (`/api/v1`). Unset: the API answers 503. See [`docs/architecture/api.md`](docs/architecture/api.md). |
+| `NEXUS_TENANT_ID` | Tenant this deployment serves (default `demo`); API keys for another tenant are refused. |
 
 No `.env` file is required for the default (offline) experience in `next dev`.
 
@@ -128,6 +130,16 @@ written to the source or the store. `adapters/generic/` is a generic
 example built from the demo seed with deliberate anomalies because no
 real system name was supplied; see its README for how to point it at a
 real export.
+
+### Public read API
+
+`/api/v1/*` exposes shipments, drivers, vehicles, facilities, exceptions,
+approvals, policies, agent runs, the audit log and the command-center
+summary as JSON, read-only, behind scoped API keys (`Authorization:
+Bearer <keyId>.<secret>`). Every request with a recognised key is written
+to the audit log. Routes are backed by `lib/queries.ts` and the tool layer,
+never by direct store access. Full route table, scopes and key format:
+[`docs/architecture/api.md`](docs/architecture/api.md).
 
 ## Running the application
 
@@ -184,6 +196,9 @@ components/             UI components
 lib/domain/              Types, seeded data generator, NexusState + StateRepository (memory / Postgres), policies
 lib/db/                   Postgres pool, migration runner, seed loader
 lib/adapters/             Read-only CSV/REST source adapters, mapping engine, reconciliation
+lib/apiAuth.ts            Scoped API-key auth (pure) for the public read API
+lib/api/handler.ts        Authenticated, audited, read-only route wrapper
+app/api/v1/               Public read API routes
 adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
 db/migrations/             Forward-only SQL migrations
 scripts/                   db:migrate / db:seed entry points

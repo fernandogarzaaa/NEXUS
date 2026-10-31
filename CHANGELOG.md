@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ids, quarantined rows with missing fields). `npm run reconcile`. A generic
   example lives in `adapters/generic/` because no Senor system name was
   supplied.
+- Public read-only API under `/api/v1` (summary, shipments, shipment detail,
+  drivers, vehicles, facilities, exceptions, approvals, policies, agent runs,
+  audit, health) with scoped API keys (`NEXUS_API_KEYS`, `NEXUS_TENANT_ID`),
+  constant-time secret comparison, tenant binding, pagination and filters.
+  Every request with a recognised key is audited through the tool layer
+  (`recordApiAccess`). `proxy.ts` leaves `/api/v1/*` to key auth.
 
 ## [0.2.1] - 2026-10-13
 
