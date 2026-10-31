@@ -153,6 +153,17 @@ indexing return `NOT_FOUND` instead of a guess. Deterministic BM25, no
 LLM, no external service. Details:
 [`docs/architecture/knowledge.md`](docs/architecture/knowledge.md).
 
+### MCP server
+
+`POST /api/mcp` is a Model Context Protocol server (Streamable HTTP) for
+AI assistants. Identity is an API key mapped to a real subject and tenant;
+the server lists only the tools that key may use and audits every call.
+Read tools cover shipments, exceptions, drivers, approvals, policies,
+audit and cited knowledge answers. The one write tool,
+`request_driver_reassignment`, only queues a request in the human
+approval queue; no MCP tool can execute or approve an operational change.
+Details and client config: [`docs/architecture/mcp.md`](docs/architecture/mcp.md).
+
 ### Legacy migration harness (dry run only)
 
 ```bash
@@ -228,6 +239,8 @@ lib/api/handler.ts        Authenticated, audited, read-only route wrapper
 app/api/v1/               Public read API routes
 lib/migration/            Legacy migration harness (dry run only)
 lib/knowledge/            Cited, verified retrieval over canonical records and ops docs
+lib/mcp/                  MCP server (tools over queries/tool layer) + Streamable HTTP handler
+app/api/mcp/              MCP endpoint
 docs/ops/                  Ops documents indexed for retrieval
 adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
 db/migrations/             Forward-only SQL migrations

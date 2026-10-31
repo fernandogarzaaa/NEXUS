@@ -383,6 +383,7 @@ const recordApiAccessSchema = z.object({
   tenantId: z.string().min(1),
   method: z.string().min(1),
   path: z.string().min(1),
+  channel: z.enum(["API", "MCP"]).default("API"),
   scope: z.string().min(1),
   outcome: z.enum(["ALLOWED", "DENIED"]),
   status: z.number().int().min(100).max(599),
@@ -395,15 +396,15 @@ const recordApiAccessSchema = z.object({
  * mutation. The actor is the key's subject (a real person or service), not
  * the key itself.
  */
-export function recordApiAccess(input: z.infer<typeof recordApiAccessSchema>): AuditEvent {
+export function recordApiAccess(input: z.input<typeof recordApiAccessSchema>): AuditEvent {
   const p = validate("recordApiAccess", recordApiAccessSchema, input);
   const event: AuditEvent = {
     id: nextId("AUD"),
     timestamp: nowIso(),
     actorType: "HUMAN",
     actorId: `${p.subject} (api-key ${p.keyId}, tenant ${p.tenantId})`,
-    action: p.outcome === "ALLOWED" ? "API_READ" : "API_ACCESS_DENIED",
-    entityType: "ApiRequest",
+    action: p.channel === "MCP" ? (p.outcome === "ALLOWED" ? "MCP_TOOL_CALL" : "MCP_ACCESS_DENIED") : p.outcome === "ALLOWED" ? "API_READ" : "API_ACCESS_DENIED",
+    entityType: p.channel === "MCP" ? "McpRequest" : "ApiRequest",
     entityId: p.requestId,
     agentRunId: null,
     detail: `${p.method} ${p.path} [${p.scope}] -> ${p.status}`,

@@ -30,7 +30,16 @@ export const API_SCOPES = [
   "read:audit",
   "read:knowledge",
 ] as const;
-export type ApiScope = (typeof API_SCOPES)[number];
+export type ReadScope = (typeof API_SCOPES)[number];
+
+/**
+ * Write scopes. Never implied by "read:*". "request:actions" lets a caller
+ * put an action into the human approval queue (MCP write tools); it never
+ * executes anything by itself, and also needs the operator or admin role.
+ */
+export const WRITE_SCOPES = ["request:actions"] as const;
+export type WriteScope = (typeof WRITE_SCOPES)[number];
+export type ApiScope = ReadScope | WriteScope;
 
 export const API_ROLES = ["viewer", "operator", "admin"] as const;
 export type ApiRole = (typeof API_ROLES)[number];
@@ -42,7 +51,7 @@ const apiKeySchema = z
     subject: z.string().min(1),
     tenantId: z.string().min(1),
     roles: z.array(z.enum(API_ROLES)).min(1),
-    scopes: z.array(z.union([z.enum(API_SCOPES), z.literal("read:*")])).min(1),
+    scopes: z.array(z.union([z.enum(API_SCOPES), z.enum(WRITE_SCOPES), z.literal("read:*")])).min(1),
   })
   .strict();
 
@@ -88,15 +97,24 @@ export type ApiAuthResult =
   | { ok: false; status: 401 | 403 | 503; code: "no_keys_configured" | "missing_credentials" | "invalid_key" | "wrong_tenant" | "insufficient_scope"; message: string; keyId?: string };
 
 export function hasScope(principal: Pick<ApiPrincipal, "scopes">, scope: ApiScope): boolean {
-  return principal.scopes.includes("read:*") || principal.scopes.includes(scope);
+  if (principal.scopes.includes(scope)) return true;
+  return scope.startsWith("read:") && principal.scopes.includes("read:*");
 }
 
+export function hasRole(principal: Pick<ApiPrincipal, "roles">, ...roles: ApiRole[]): boolean {
+  return principal.roles.some((r) => roles.includes(r));
+}
+
+export type ApiKeyAuthResult =
+  | { ok: true; principal: ApiPrincipal }
+  | { ok: false; status: 401 | 403 | 503; code: "no_keys_configured" | "missing_credentials" | "invalid_key" | "wrong_tenant"; message: string; keyId?: string };
+
 /**
- * Authenticate `Authorization: Bearer <keyId>.<secret>` and authorise the
- * requested scope. Secrets are compared in constant time; an unknown key id
- * and a wrong secret are indistinguishable to the caller.
+ * Authenticate `Authorization: Bearer <keyId>.<secret>` and bind it to this
+ * deployment's tenant. Secrets are compared in constant time; an unknown key
+ * id and a wrong secret are indistinguishable to the caller.
  */
-export function authenticateApiRequest(env: ApiAuthEnv, authorization: string | null | undefined, scope: ApiScope): ApiAuthResult {
+export function authenticateApiKey(env: ApiAuthEnv, authorization: string | null | undefined): ApiKeyAuthResult {
   const keys = parseApiKeys(env);
   if (keys.length === 0) {
     return { ok: false, status: 503, code: "no_keys_configured", message: "The API is disabled: NEXUS_API_KEYS is not configured." };
@@ -119,9 +137,15 @@ export function authenticateApiRequest(env: ApiAuthEnv, authorization: string | 
   if (key.tenantId !== tenant) {
     return { ok: false, status: 403, code: "wrong_tenant", message: `This deployment serves tenant "${tenant}"; the key belongs to another tenant.`, keyId: key.id };
   }
-  const principal: ApiPrincipal = { keyId: key.id, subject: key.subject, tenantId: key.tenantId, roles: key.roles, scopes: key.scopes };
-  if (!hasScope(principal, scope)) {
-    return { ok: false, status: 403, code: "insufficient_scope", message: `This key lacks the "${scope}" scope.`, keyId: key.id };
+  return { ok: true, principal: { keyId: key.id, subject: key.subject, tenantId: key.tenantId, roles: key.roles, scopes: key.scopes } };
+}
+
+/** authenticateApiKey, then authorise one scope. */
+export function authenticateApiRequest(env: ApiAuthEnv, authorization: string | null | undefined, scope: ApiScope): ApiAuthResult {
+  const auth = authenticateApiKey(env, authorization);
+  if (!auth.ok) return auth;
+  if (!hasScope(auth.principal, scope)) {
+    return { ok: false, status: 403, code: "insufficient_scope", message: `This key lacks the "${scope}" scope.`, keyId: auth.principal.keyId };
   }
-  return { ok: true, principal };
+  return auth;
 }

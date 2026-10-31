@@ -28,9 +28,9 @@ real subject, a tenant, roles and scopes:
   `read:vehicles`, `read:facilities`, `read:exceptions`,
   `read:approvals`, `read:policies`, `read:agent-runs`, `read:audit`,
   `read:knowledge`, or `read:*`. A missing scope answers `403 insufficient_scope`.
-- Roles (`viewer`, `operator`, `admin`) are recorded on the key now and
-  will gate the write routes when those are added behind the approval
-  queue.
+- Write scope `request:actions` is never implied by `read:*` and, on the
+  MCP endpoint, also needs role `operator` or `admin`. It only queues
+  requests in the human approval queue (see `mcp.md`).
 - With no keys configured the API answers `503 no_keys_configured`.
 - The shared UI token (`NEXUS_ACCESS_TOKEN`) does not authenticate API
   calls; `proxy.ts` leaves `/api/v1/*` to key auth.

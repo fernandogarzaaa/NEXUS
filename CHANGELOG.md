@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and timestamp; unknown ids, unrelated questions and stale (hash-changed),
   missing or too-old sources return `NOT_FOUND`. Ops docs in `docs/ops/`
   (`NEXUS_OPS_DOCS_DIR`); optional `NEXUS_RAG_MAX_AGE_HOURS`.
+- MCP server at `POST /api/mcp` (`@modelcontextprotocol/sdk`, Streamable
+  HTTP, stateless) in the NEXUS process. Identity is an API key mapped to a
+  real subject and tenant; only permitted tools are listed; every call is
+  audited (`MCP_TOOL_CALL` / `MCP_ACCESS_DENIED`). Ten read tools over
+  `lib/queries.ts`, the tool layer and the knowledge layer. One write tool,
+  `request_driver_reassignment` (`request:actions` + operator/admin role),
+  which always queues a human approval attributed to the requester, even
+  under an autonomous policy, and is idempotent per shipment.
+- `authenticateApiKey` split from scope checks; `request:actions` write
+  scope (never implied by `read:*`); `hasRole`.
 
 ### Security
 - `next` 16.3.8 -> 16.4.3 (pinned): fixes GHSA advisories for unauthenticated

@@ -163,6 +163,90 @@ export function resumeDispatchAfterApproval(runId: string, approved: boolean, re
   return run;
 }
 
+export interface ActionRequester {
+  /** The real person or service behind the request (from the API key), never a demo string. */
+  subject: string;
+  tenantId: string;
+  keyId: string;
+  channel: "MCP" | "API";
+}
+
+/**
+ * Put a driver reassignment for `shipmentId` into the human approval queue on
+ * behalf of an external requester (MCP). Unlike the standing sweep, this
+ * ALWAYS requires approval, whatever the DRIVER_REASSIGNMENT policy says, and
+ * an OBSERVE policy still means report-only. Nothing executes here; a human
+ * decision in the Approvals queue resumes the run through
+ * resumeDispatchAfterApproval. Idempotent per shipment: an existing pending
+ * reassignment approval is returned instead of a second one.
+ */
+export function requestReassignmentApproval(shipmentId: string, requester: ActionRequester, reason: string): DispatchCheckResult & { approvalId: string | null } {
+  const state = getState();
+  const shipment = getShipment(shipmentId);
+  if (shipment.status === "DELIVERED" || shipment.status === "CANCELLED") {
+    throw new ToolExecutionError("requestReassignmentApproval", `${shipmentId} is ${shipment.status}; nothing to reassign`);
+  }
+  const pending = Array.from(state.approvals.values()).find(
+    (a) => a.shipmentId === shipmentId && a.actionType === "DRIVER_REASSIGNMENT" && a.status === "PENDING"
+  );
+  if (pending) {
+    return {
+      shipmentId,
+      reassignmentNeeded: true,
+      run: state.agentRuns.get(pending.agentRunId) ?? null,
+      reason: `A reassignment approval for ${shipmentId} is already pending (${pending.id}).`,
+      approvalId: pending.id,
+    };
+  }
+
+  const who = `${requester.subject} via ${requester.channel} (api-key ${requester.keyId}, tenant ${requester.tenantId})`;
+  const run = createRun(shipmentId, `${requester.channel}_REQUEST`);
+  addStep(run.id, "DETECT", `Reassignment requested via ${requester.channel}`, `${who} requested reassignment of ${shipmentId}: ${reason}`);
+  const current = shipment.driverId ? getDriver(shipment.driverId) : null;
+  addStep(run.id, "CONTEXT", "Shipment + driver context retrieved", `${shipment.id} priority ${shipment.priority}, current driver ${current ? `${current.name} (${current.id})` : "unassigned"}.`);
+
+  const alt = findAlternativeDriver({ shipmentId });
+  addStep(run.id, "REASON", "Searching for alternative driver", alt ? `Candidate found: ${alt.name} (${alt.hoursOfServiceRemaining.toFixed(1)}h HOS, ${(alt.onTimeRating * 100).toFixed(0)}% on-time).` : "No available alternative driver found.");
+  if (!alt) {
+    run.status = "ESCALATED";
+    run.completedAt = nowIso();
+    run.outcomeSummary = "Requested reassignment has no qualified alternative driver — escalated to dispatch supervisor.";
+    addStep(run.id, "ESCALATE", "Escalated to human dispatcher", "No qualified alternative driver is currently available.", "ERROR");
+    return { shipmentId, reassignmentNeeded: true, run, reason: run.outcomeSummary, approvalId: null };
+  }
+
+  addStep(run.id, "PLAN", "Reassignment plan proposed", `Reassign ${shipmentId} from ${current?.id ?? "unassigned"} to ${alt.id} (${alt.name}).`);
+  const policyDecision = evaluatePolicy("DRIVER_REASSIGNMENT", 180);
+  run.autonomyLevel = policyDecision.effectiveLevel;
+  addStep(run.id, "POLICY", `Autonomy level: ${policyDecision.effectiveLevel}`, `${policyDecision.reason} Externally requested writes always require human approval.`);
+
+  if (policyDecision.effectiveLevel === "OBSERVE") {
+    addStep(run.id, "ESCALATE", "Observed only — no approval requested", `${policyDecision.reason} The request is recorded for manual review.`, "WARN");
+    run.status = "COMPLETED";
+    run.completedAt = nowIso();
+    run.outcomeSummary = `Observed only (OBSERVE policy) — ${requester.channel} request to reassign ${shipmentId} recorded, no action taken.`;
+    return { shipmentId, reassignmentNeeded: true, run, reason: run.outcomeSummary, approvalId: null };
+  }
+
+  addStep(run.id, "APPROVAL", "Escalated for human approval", `Requested by ${who}; a human must approve in the Approvals queue before anything executes.`);
+  state.pendingDispatchProposals.set(run.id, alt.id);
+  const approval = requestApproval({
+    agentRunId: run.id,
+    shipmentId,
+    actionType: "DRIVER_REASSIGNMENT",
+    summary: `Reassign ${shipmentId} from ${current?.name ?? "unassigned"} to ${alt.name} (requested by ${requester.subject})`,
+    whatWillHappen: `${shipment.id} will be reassigned from ${current?.name ?? "unassigned"} to ${alt.name}.`,
+    why: reason,
+    expectedImpact: `${alt.name} has a ${(alt.onTimeRating * 100).toFixed(0)}% on-time rating and ${alt.hoursOfServiceRemaining.toFixed(1)}h HOS remaining.`,
+    estimatedCostUsd: 180,
+    slaImpactMin: 0,
+    confidence: 0.75,
+    contextNotes: [`Requested by ${who}`, `Policy: ${policyDecision.effectiveLevel}`],
+  });
+  run.status = "AWAITING_APPROVAL";
+  return { shipmentId, reassignmentNeeded: true, run, reason: `Awaiting human approval (${approval.id}).`, approvalId: approval.id };
+}
+
 /** Sweep all active shipments and evaluate assignment validity for each. */
 export function runDispatchSweep(): DispatchCheckResult[] {
   const state = getState();
