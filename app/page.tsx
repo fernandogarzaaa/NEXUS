@@ -6,6 +6,7 @@ import OpsMap from "@/components/OpsMap";
 import { SeverityBadge, ExceptionStatusBadge, AgentRunStatusBadge } from "@/components/badges";
 import { getSummary, listExceptions, listFacilities, listShipments, listAgentActivity } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { currentPrincipal } from "@/lib/authServer";
 
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "danger" }) {
   const color = tone === "danger" ? "var(--danger)" : tone === "warn" ? "var(--warn)" : "var(--text)";
@@ -25,6 +26,8 @@ export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage() {
   await loadState();
+  const principal = await currentPrincipal();
+  const roles = principal?.roles ?? [];
   const summary = getSummary();
   const exceptions = listExceptions().slice(0, 6);
   const facilities = listFacilities();
@@ -37,7 +40,7 @@ export default async function CommandCenterPage() {
       <PageHeader
         title="Operations Command Center"
         subtitle="Live view of the NEXUS agentic operations layer — observe, decide, act, verify, escalate."
-        actions={<DemoControls />}
+        actions={<DemoControls canOperate={roles.includes("operator") || roles.includes("admin")} canAdmin={roles.includes("admin")} />}
       />
       <div className="p-4 md:p-8 flex flex-col gap-6">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">

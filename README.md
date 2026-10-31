@@ -72,6 +72,8 @@ npm install
 |---|---|
 | `ANTHROPIC_API_KEY` | If set, enriches recovery rationale text via Claude. Omit to run fully offline. |
 | `ANTHROPIC_MODEL` | Overrides the model used for narration (default `claude-sonnet-5`). |
+| `NEXUS_USERS` | **Pilot mode.** JSON array of named users `{username, displayName, passwordHash, tenantId, roles}`; roles are `viewer`, `operator` (run scenarios, decide approvals), `admin` (also edit policies, reset). Takes precedence over `NEXUS_ACCESS_TOKEN`. Hash passwords with `npm run user:hash`. |
+| `NEXUS_SESSION_SECRET` | Required with `NEXUS_USERS`: at least 32 random characters used to sign session cookies. |
 | `NEXUS_ACCESS_TOKEN` | Shared access token. When set, every page and Server Action requires signing in at `/login` with this token (12 h `HttpOnly`, `SameSite=Lax` session cookie). |
 | `NEXUS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a public throwaway demo without a token. Without a token and without this flag, production builds refuse all state-changing actions (approve/reject, reset, run scenario, policy edits); `next dev` and tests stay open. |
 | `NEXUS_STATE_BACKEND` | `memory` (default: in-process, resets on restart) or `postgres` (durable). See "State backend" below. |
@@ -79,12 +81,19 @@ npm install
 | `DATABASE_SSL` | Set to `1` for TLS with certificate verification against the system trust store. |
 | `NEXUS_TEST_DATABASE_URL` | A throwaway database the Postgres integration tests may wipe. Unset: those tests are skipped. |
 | `NEXUS_API_KEYS` | JSON array of scoped API keys for the read API (`/api/v1`). Unset: the API answers 503. See [`docs/architecture/api.md`](docs/architecture/api.md). |
+| `NEXUS_OPS_DOCS_DIR` | Directory of ops documents for retrieval (default `docs/ops`). |
+| `NEXUS_RAG_MAX_AGE_HOURS` | Optional: retrieval refuses records whose own timestamp is older than this. |
 | `NEXUS_TENANT_ID` | Tenant this deployment serves (default `demo`); API keys for another tenant are refused. |
 
 No `.env` file is required for the default (offline) experience in `next dev`.
 
-**Deploying publicly:** set `NEXUS_ACCESS_TOKEN` (or explicitly opt out with
-`NEXUS_ALLOW_UNAUTHENTICATED=1`). The gate is enforced twice: in `proxy.ts`
+**Deploying publicly:** for a pilot with real data, configure `NEXUS_USERS`
++ `NEXUS_SESSION_SECRET` + `NEXUS_TENANT_ID`: every approval, policy edit
+and reset is then attributed to a named person and gated by role, and
+users of another tenant cannot sign in. `NEXUS_ACCESS_TOKEN` is a shared
+demo secret, not production auth: everyone who knows it is the same
+unnamed user. (Or explicitly opt out with `NEXUS_ALLOW_UNAUTHENTICATED=1`
+for a throwaway demo.) The gate is enforced twice: in `proxy.ts`
 (Next.js 16's replacement for `middleware.ts`) and inside every Server Action.
 
 ### State backend
@@ -141,6 +150,27 @@ to the audit log. Routes are backed by `lib/queries.ts` and the tool layer,
 never by direct store access. Full route table, scopes and key format:
 [`docs/architecture/api.md`](docs/architecture/api.md).
 
+### Knowledge retrieval (RAG)
+
+`GET /api/v1/ask?q=…` answers from canonical records and the ops documents
+in `docs/ops/`. Every sentence of an answer is a retrieved passage with a
+numbered citation naming the source record and its timestamp. Unknown ids,
+unrelated questions, and sources that changed or disappeared since
+indexing return `NOT_FOUND` instead of a guess. Deterministic BM25, no
+LLM, no external service. Details:
+[`docs/architecture/knowledge.md`](docs/architecture/knowledge.md).
+
+### MCP server
+
+`POST /api/mcp` is a Model Context Protocol server (Streamable HTTP) for
+AI assistants. Identity is an API key mapped to a real subject and tenant;
+the server lists only the tools that key may use and audits every call.
+Read tools cover shipments, exceptions, drivers, approvals, policies,
+audit and cited knowledge answers. The one write tool,
+`request_driver_reassignment`, only queues a request in the human
+approval queue; no MCP tool can execute or approve an operational change.
+Details and client config: [`docs/architecture/mcp.md`](docs/architecture/mcp.md).
+
 ### Legacy migration harness (dry run only)
 
 ```bash
@@ -195,7 +225,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-100 tests across 17 files covering: the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
+128 tests across 20 files covering: named users, signed sessions and role gating, knowledge retrieval (citations, NOT_FOUND, stale/missing/too-old sources), the MCP server (identity, tool visibility per scope and role, audit, approval-gated writes), the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),
@@ -215,6 +245,10 @@ lib/apiAuth.ts            Scoped API-key auth (pure) for the public read API
 lib/api/handler.ts        Authenticated, audited, read-only route wrapper
 app/api/v1/               Public read API routes
 lib/migration/            Legacy migration harness (dry run only)
+lib/knowledge/            Cited, verified retrieval over canonical records and ops docs
+lib/mcp/                  MCP server (tools over queries/tool layer) + Streamable HTTP handler
+app/api/mcp/              MCP endpoint
+docs/ops/                  Ops documents indexed for retrieval
 adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
 db/migrations/             Forward-only SQL migrations
 scripts/                   db:migrate / db:seed entry points

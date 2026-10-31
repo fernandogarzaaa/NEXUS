@@ -5,7 +5,8 @@ import "./globals.css";
 import { getSummary } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
 import NavLink from "@/components/NavLink";
-import { canViewPages } from "@/lib/authServer";
+import { canViewPages, currentPrincipal } from "@/lib/authServer";
+import { logoutAction } from "@/lib/authActions";
 import { actionsDisabledByConfig } from "@/lib/auth";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -40,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
   await loadState();
+  const principal = await currentPrincipal();
   const summary = getSummary();
   const readOnly = actionsDisabledByConfig(process.env);
   return (
@@ -88,6 +90,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span>All clear — no pending approvals</span>
             )}
             <div className="mt-1">Seed #{summary.seed}</div>
+            {principal && (
+              <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+                <div className="font-medium" style={{ color: "var(--text)" }}>
+                  {principal.displayName}
+                </div>
+                <div>
+                  {principal.named ? `${principal.roles.join(", ")} · tenant ${principal.tenantId}` : "Demo mode: not a named user"}
+                </div>
+                {principal.mode !== "open" && (
+                  <form action={logoutAction} className="mt-1.5">
+                    <button type="submit" className="underline" style={{ color: "var(--accent)" }}>
+                      Sign out
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
           </div>
         </aside>
         <main id="main" className="flex-1 min-w-0">

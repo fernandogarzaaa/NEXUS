@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { decideApprovalAction } from "@/lib/actions";
 
-export default function ApprovalActions({ approvalId }: { approvalId: string }) {
+export default function ApprovalActions({ approvalId, canDecide = true }: { approvalId: string; canDecide?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -13,9 +13,17 @@ export default function ApprovalActions({ approvalId }: { approvalId: string }) 
       try {
         await decideApprovalAction(approvalId, approve);
       } catch {
-        setError("Could not record the decision. Your session may have expired; reload and try again.");
+        setError("Could not record the decision. Your session may have expired or your role cannot decide approvals; reload and try again.");
       }
     });
+  }
+
+  if (!canDecide) {
+    return (
+      <span className="text-[12px]" style={{ color: "var(--text-muted)" }}>
+        Needs operator role
+      </span>
+    );
   }
 
   return (

@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
+### Added
+- Knowledge retrieval over canonical records and ops docs (`lib/knowledge/`,
+  `GET /api/v1/ask`, scope `read:knowledge`): deterministic BM25, extractive
+  answers where every sentence carries a numbered citation with source id
+  and timestamp; unknown ids, unrelated questions and stale (hash-changed),
+  missing or too-old sources return `NOT_FOUND`. Ops docs in `docs/ops/`
+  (`NEXUS_OPS_DOCS_DIR`); optional `NEXUS_RAG_MAX_AGE_HOURS`.
+- MCP server at `POST /api/mcp` (`@modelcontextprotocol/sdk`, Streamable
+  HTTP, stateless) in the NEXUS process. Identity is an API key mapped to a
+  real subject and tenant; only permitted tools are listed; every call is
+  audited (`MCP_TOOL_CALL` / `MCP_ACCESS_DENIED`). Ten read tools over
+  `lib/queries.ts`, the tool layer and the knowledge layer. One write tool,
+  `request_driver_reassignment` (`request:actions` + operator/admin role),
+  which always queues a human approval attributed to the requester, even
+  under an autonomous policy, and is idempotent per shipment.
+- `authenticateApiKey` split from scope checks; `request:actions` write
+  scope (never implied by `read:*`); `hasRole`.
+- Named UI users with roles (pilot mode): `NEXUS_USERS` (scrypt password
+  hashes via `npm run user:hash`, tenant, roles `viewer` / `operator` /
+  `admin`) + `NEXUS_SESSION_SECRET`. HMAC-signed session cookie bound to user,
+  tenant, expiry and a password fingerprint (changing a password or removing
+  a user ends their sessions). Users of another tenant cannot sign in.
+  Operators run scenarios and decide approvals; admins also edit policies
+  and reset. The UI shows who is signed in, a sign-out button, and disables
+  controls the role cannot use. Shared-token and open demo modes keep
+  working and are labelled as unnamed users.
+
+### Security
+- `decideApprovalAction` no longer accepts the approver's name from the
+  caller (Server Action arguments are caller-controlled); the approver is
+  the signed-in principal.
+- Approval decisions, policy edits and resets now go through the tool layer
+  and write audit events (`APPROVE_ACTION` / `REJECT_ACTION`,
+  `UPDATE_POLICY`, `RESET_STATE`) with the human actor.
+
+### Security
+- `next` 16.3.8 -> 16.4.3 (pinned): fixes GHSA advisories for unauthenticated
+  RCE in the Image Optimization API with SVGs, RCE in `use cache` functions
+  returning typed arrays, and a Server Actions DoS (all `>=16.0.0 <=16.4.0`).
+- `zod` -> ^4.6.7: fixes memory exhaustion when validating oversized
+  constrained collections (`<4.6.6`). `npm audit --omit=dev` is now clean.
+
 ### Added
 - `StateRepository` interface (`lib/domain/repository.ts`) extracted from the
   in-memory store; `lib/domain/store.ts` is now a facade with `loadState()` /

@@ -10,9 +10,9 @@ import { SESSION_COOKIE, decide } from "./lib/auth";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname === "/login") return NextResponse.next();
-  // The public API authenticates with scoped API keys (lib/apiAuth.ts), not
-  // the UI session cookie; its handlers enforce that themselves.
-  if (pathname.startsWith("/api/v1/")) return NextResponse.next();
+  // The public API and the MCP endpoint authenticate with scoped API keys
+  // (lib/apiAuth.ts), not the UI session cookie; their handlers enforce that.
+  if (pathname.startsWith("/api/v1/") || pathname === "/api/mcp") return NextResponse.next();
   const decision = await decide(process.env, request.cookies.get(SESSION_COOKIE)?.value);
   if (decision !== "login_required") return NextResponse.next();
   if (request.method === "GET" || request.method === "HEAD") {

@@ -7,7 +7,7 @@ import { AutonomyBadge } from "@/components/badges";
 
 const LEVELS: AutonomyLevel[] = ["OBSERVE", "RECOMMEND", "LOW_RISK_AUTONOMOUS", "OPERATIONAL_AUTONOMOUS", "HIGH_IMPACT_APPROVAL"];
 
-export default function PolicyRow({ policy }: { policy: Policy }) {
+export default function PolicyRow({ policy, canEdit = true }: { policy: Policy; canEdit?: boolean }) {
   const [level, setLevel] = useState<AutonomyLevel>(policy.autonomyLevel);
   const [maxCost, setMaxCost] = useState<string>(policy.maxCostUsd === null ? "" : String(policy.maxCostUsd));
   const [pending, startTransition] = useTransition();
@@ -25,7 +25,7 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
       try {
         await updatePolicyAction(policy.actionType, level, parsed);
       } catch {
-        setError("Save failed. Your session may have expired; reload and try again.");
+        setError("Save failed. Your session may have expired or your role cannot edit policies; reload and try again.");
         return;
       }
       setSaved(true);
@@ -49,6 +49,7 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
           <select
             aria-label={`Autonomy level for ${policy.label}`}
             value={level}
+            disabled={!canEdit}
             onChange={(e) => setLevel(e.target.value as AutonomyLevel)}
             className="rounded-md border px-2 py-1 text-[12.5px]"
             style={{ borderColor: "var(--border)" }}
@@ -71,6 +72,7 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
             aria-label={`Max cost in USD for ${policy.label}`}
             aria-invalid={error ? true : undefined}
             value={maxCost}
+            disabled={!canEdit}
             onChange={(e) => setMaxCost(e.target.value)}
             placeholder="no limit"
             className="w-24 rounded-md border px-2 py-1 text-[12.5px]"
@@ -81,7 +83,7 @@ export default function PolicyRow({ policy }: { policy: Policy }) {
         )}
       </td>
       <td>
-        {policy.editable && (
+        {policy.editable && canEdit && (
           <button
             type="button"
             onClick={save}
