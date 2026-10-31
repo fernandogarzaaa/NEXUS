@@ -74,12 +74,87 @@ npm install
 | `ANTHROPIC_MODEL` | Overrides the model used for narration (default `claude-sonnet-5`). |
 | `NEXUS_ACCESS_TOKEN` | Shared access token. When set, every page and Server Action requires signing in at `/login` with this token (12 h `HttpOnly`, `SameSite=Lax` session cookie). |
 | `NEXUS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a public throwaway demo without a token. Without a token and without this flag, production builds refuse all state-changing actions (approve/reject, reset, run scenario, policy edits); `next dev` and tests stay open. |
+| `NEXUS_STATE_BACKEND` | `memory` (default: in-process, resets on restart) or `postgres` (durable). See "State backend" below. |
+| `DATABASE_URL` | Postgres connection string. Required when `NEXUS_STATE_BACKEND=postgres`. |
+| `DATABASE_SSL` | Set to `1` for TLS with certificate verification against the system trust store. |
+| `NEXUS_TEST_DATABASE_URL` | A throwaway database the Postgres integration tests may wipe. Unset: those tests are skipped. |
+| `NEXUS_API_KEYS` | JSON array of scoped API keys for the read API (`/api/v1`). Unset: the API answers 503. See [`docs/architecture/api.md`](docs/architecture/api.md). |
+| `NEXUS_TENANT_ID` | Tenant this deployment serves (default `demo`); API keys for another tenant are refused. |
 
 No `.env` file is required for the default (offline) experience in `next dev`.
 
 **Deploying publicly:** set `NEXUS_ACCESS_TOKEN` (or explicitly opt out with
 `NEXUS_ALLOW_UNAUTHENTICATED=1`). The gate is enforced twice: in `proxy.ts`
 (Next.js 16's replacement for `middleware.ts`) and inside every Server Action.
+
+### State backend
+
+By default NEXUS keeps its working set in memory, rebuilt from the
+deterministic seed on every start. To keep state across restarts and get a
+real SQL surface, point it at Postgres:
+
+```bash
+export NEXUS_STATE_BACKEND=postgres
+export DATABASE_URL=postgres://user:pass@host:5432/nexus
+npm run db:migrate          # applies db/migrations/*.sql (forward-only, idempotent)
+npm run db:seed             # loads the same demo set the memory backend starts with
+npm run db:seed -- --force  # replaces whatever is there with the demo set
+```
+
+An empty, migrated database is seeded automatically on the app's first
+request, so `db:seed` is only needed to reset or to pre-load. The schema
+stores every canonical record as `jsonb` with generated, indexed columns
+for ids, statuses and foreign keys (see `db/migrations/0001_init.sql`).
+Agents, tools and queries are unchanged between backends: they all run
+against one in-process working set that a `StateRepository`
+(`lib/domain/repository.ts`) hydrates before each request and flushes after
+each Server Action. This supports one NEXUS server process per database;
+multi-instance coordination is not built.
+
+### External adapters and reconciliation (proof of the seam)
+
+`lib/adapters/` reads an external system **read-only** (CSV extract or a
+GET-only REST endpoint), maps rows to the canonical `Shipment` / `Driver` /
+`Vehicle` / `Facility` types through a declarative mapping file, and
+reconciles them against the canonical store:
+
+```bash
+npm run reconcile -- --mapping adapters/generic/mapping.json [--entity shipment] [--out report.json]
+```
+
+The report lists matched records (with field-level differences), source
+records NEXUS does not know, canonical records the source did not present,
+duplicate source ids, rows that map to the same canonical id, and
+quarantined rows with the exact missing fields and errors. Nothing is
+written to the source or the store. `adapters/generic/` is a generic
+example built from the demo seed with deliberate anomalies because no
+real system name was supplied; see its README for how to point it at a
+real export.
+
+### Public read API
+
+`/api/v1/*` exposes shipments, drivers, vehicles, facilities, exceptions,
+approvals, policies, agent runs, the audit log and the command-center
+summary as JSON, read-only, behind scoped API keys (`Authorization:
+Bearer <keyId>.<secret>`). Every request with a recognised key is written
+to the audit log. Routes are backed by `lib/queries.ts` and the tool layer,
+never by direct store access. Full route table, scopes and key format:
+[`docs/architecture/api.md`](docs/architecture/api.md).
+
+### Legacy migration harness (dry run only)
+
+```bash
+npm run migrate:dry-run -- --mapping adapters/generic/mapping.json [--entity shipment] [--out report.json] [--snapshot-dir ./snapshots]
+```
+
+Takes a read-only snapshot of the source through the adapter layer (with a
+SHA-256 of what was read and an optional local copy), maps every row to
+the canonical types, and reports counts, duplicates (by source id and by
+canonical id, identical vs conflicting), missing fields per row and in
+aggregate, dangling references, quarantined rows with reasons, and what a
+real migration would create, update or leave unchanged. There is no
+non-dry-run mode: the harness never writes to the source or to NEXUS, and
+never merges duplicates. Details: [`docs/architecture/migration.md`](docs/architecture/migration.md).
 
 ## Running the application
 
@@ -120,7 +195,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-59 tests across 11 files covering: the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
+100 tests across 17 files covering: the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),
@@ -133,7 +208,16 @@ scenario (including a reproducibility check across repeated runs).
 ```
 app/                   Next.js routes (Server Components + Server Actions)
 components/             UI components
-lib/domain/              Types, seeded data generator, in-memory store, policies
+lib/domain/              Types, seeded data generator, NexusState + StateRepository (memory / Postgres), policies
+lib/db/                   Postgres pool, migration runner, seed loader
+lib/adapters/             Read-only CSV/REST source adapters, mapping engine, reconciliation
+lib/apiAuth.ts            Scoped API-key auth (pure) for the public read API
+lib/api/handler.ts        Authenticated, audited, read-only route wrapper
+app/api/v1/               Public read API routes
+lib/migration/            Legacy migration harness (dry run only)
+adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
+db/migrations/             Forward-only SQL migrations
+scripts/                   db:migrate / db:seed entry points
 lib/agents/               Tool layer, policy engine, reasoner, orchestrator, the three agents
 lib/sim/                   Simulation engine + hero demo script
 lib/queries.ts             Read-side selectors for the UI
@@ -146,12 +230,13 @@ docs/demo/                   Demo script
 
 ## Key architecture decisions (and why)
 
-- **In-memory store, not a database.** The POC's requirements — a
-  reproducible seeded dataset, instant reset, deterministic demo — are
-  better served by an in-memory snapshot than by database seed/reset
-  tooling. The production translation path is documented and
-  intentionally a contained swap: see
-  [`docs/architecture/data-model.md`](docs/architecture/data-model.md).
+- **One in-process working set, pluggable persistence.** The POC's
+  requirements — a reproducible seeded dataset, instant reset,
+  deterministic demo — are served by an in-memory working set. A
+  `StateRepository` owns that set: the in-memory implementation is the
+  default, and the Postgres implementation hydrates and flushes the same
+  set behind a flag, so no agent or tool code knows which backend is in
+  use. See [`docs/architecture/data-model.md`](docs/architecture/data-model.md).
 - **Deterministic decision logic, optional LLM narration.** The hero demo
   must be reproducible and the POC must not require network access. The
   reasoner's ranking is a deterministic scoring function; an LLM (if
@@ -171,8 +256,9 @@ docs/demo/                   Demo script
   a real mapping/routing provider.
 - ETA/routing math is distance-based, not a real routing graph —
   intentional; real routing integration is Phase 3 scope.
-- The in-memory store is single-process and resets on restart; see the
-  data model doc for the Postgres migration path.
+- The default in-memory backend is single-process and resets on restart.
+  The Postgres backend is durable but still assumes a single NEXUS server
+  process per database (no multi-writer coordination).
 - All communications are simulated (no real email/SMS/EDI); see the
   roadmap for the Phase 2/3 integration path.
 

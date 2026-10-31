@@ -4,10 +4,12 @@ import AutoRefresh from "@/components/AutoRefresh";
 import { ApprovalStatusBadge } from "@/components/badges";
 import ApprovalActions from "@/components/ApprovalActions";
 import { listApprovals } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 export const dynamic = "force-dynamic";
 
-export default function ApprovalsPage() {
+export default async function ApprovalsPage() {
+  await loadState();
   const approvals = listApprovals();
   const pending = approvals.filter((a) => a.status === "PENDING");
   const resolved = approvals.filter((a) => a.status !== "PENDING");

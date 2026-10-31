@@ -75,6 +75,10 @@ export function listDrivers(): Driver[] {
   return Array.from(getState().drivers.values());
 }
 
+export function listVehicles(): Vehicle[] {
+  return Array.from(getState().vehicles.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export interface ShipmentDetail {
   shipment: Shipment;
   driver: Driver | null;

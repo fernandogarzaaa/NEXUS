@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { getSummary } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 import NavLink from "@/components/NavLink";
 import { canViewPages } from "@/lib/authServer";
 import { actionsDisabledByConfig } from "@/lib/auth";
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </html>
     );
   }
+  await loadState();
   const summary = getSummary();
   const readOnly = actionsDisabledByConfig(process.env);
   return (

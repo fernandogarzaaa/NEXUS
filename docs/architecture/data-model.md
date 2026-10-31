@@ -39,19 +39,33 @@ both for the UI (Shipment Detail shows both, separately) and for a future
 audit/compliance requirement that operational history outlive any given
 agent implementation.
 
-## Storage (POC vs. production)
+## Storage
 
-The POC holds all of the above in `Map`s inside a single in-memory
-`NexusState` object (`lib/domain/store.ts`), rebuilt deterministically from
-a seeded generator (`lib/domain/seed.ts`) and reset on demand.
+All of the above lives in one in-process working set, `NexusState`
+(`lib/domain/state.ts`): a `Map` per keyed entity plus append-only arrays
+for steps, actions, communications and the audit log. The working set is
+built deterministically from the seeded generator (`lib/domain/seed.ts`)
+and reset on demand.
 
-**Production translation** (Phase 2 of the roadmap): each `Map` becomes a
-table in Postgres with the same shape; `id` fields are already
-globally-unique strings suitable as primary keys; foreign keys
-(`shipmentId`, `agentRunId`, etc.) already exist as plain string
-references, so the relational structure requires no redesign — only a
-repository layer implementing the same functions `lib/queries.ts` and
-`lib/agents/tools.ts` call against `getState()` today.
+Ownership of that object is a `StateRepository` (`lib/domain/repository.ts`).
+The repository decides where the working set comes from and where it goes:
+
+- `InMemoryStateRepository` (default): the working set is the storage.
+  `load()`/`persist()` are no-ops. This is the POC behaviour, unchanged.
+- `PostgresStateRepository` (`NEXUS_STATE_BACKEND=postgres`): `load()`
+  hydrates the working set from one table per entity and `persist()`
+  flushes it after a mutation boundary. Each table stores the canonical
+  record as `jsonb` in `data`, plus columns **generated from** `data`
+  (status, foreign keys, timestamps) for SQL reporting and indexes, and an
+  `ord` column so Map insertion order survives the round trip. The schema
+  is `db/migrations/0001_init.sql`; `id` fields were already
+  globally-unique strings, so they are the primary keys as-is and
+  `policies` is keyed by `action_type` like the in-memory Map.
+
+`serializeState`/`deserializeState` (`lib/domain/state.ts`) are the
+canonical plain-JSON projection of the working set; every backend and the
+repository tests use them, so a snapshot that round-trips there round-trips
+anywhere.
 
 ## Determinism
 

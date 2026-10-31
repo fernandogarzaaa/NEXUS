@@ -1,89 +1,66 @@
-import { generateSeedData, DEMO_SEED } from "./seed";
-import { defaultPolicies } from "./policies";
-import type {
-  AgentAction,
-  AgentRun,
-  AgentStep,
-  Approval,
-  AuditEvent,
-  Communication,
-  Driver,
-  Facility,
-  OperationalException,
-  Policy,
-  Route,
-  Shipment,
-  Vehicle,
-} from "./types";
+import { DEMO_SEED } from "./seed";
+import { InMemoryStateRepository, type StateBackend, type StateRepository } from "./repository";
+import { PostgresStateRepository } from "./postgresRepository";
+import { getPool } from "../db/pg";
+import type { NexusState } from "./state";
 
-// A single in-process operational store for the POC. This intentionally
-// avoids a real database (see docs/architecture/data-model.md "Production
-// evolution") — the POC's determinism and demo-reset requirements are
-// better served by a reproducible in-memory snapshot than by external
-// state. `globalThis` caching keeps a single instance across Next.js
-// dev-mode module reloads.
+export type { NexusState } from "./state";
 
-export interface NexusState {
-  facilities: Map<string, Facility>;
-  vehicles: Map<string, Vehicle>;
-  drivers: Map<string, Driver>;
-  shipments: Map<string, Shipment>;
-  routes: Map<string, Route>;
-  exceptions: Map<string, OperationalException>;
-  policies: Map<string, Policy>;
-  agentRuns: Map<string, AgentRun>;
-  agentSteps: AgentStep[];
-  agentActions: AgentAction[];
-  communications: Communication[];
-  approvals: Map<string, Approval>;
-  auditLog: AuditEvent[];
-  /** agentRunId -> proposed alternative driverId, for Dynamic Dispatch runs
-   *  awaiting approval (see lib/agents/dynamicDispatchAgent.ts). */
-  pendingDispatchProposals: Map<string, string>;
-  seed: number;
-  demoRunning: boolean;
-  demoCompletedAt: string | null;
-  seq: number;
-}
-
-function buildState(seed: number = DEMO_SEED): NexusState {
-  const data = generateSeedData(seed);
-  return {
-    facilities: new Map(data.facilities.map((f) => [f.id, f])),
-    vehicles: new Map(data.vehicles.map((v) => [v.id, v])),
-    drivers: new Map(data.drivers.map((d) => [d.id, d])),
-    shipments: new Map(data.shipments.map((s) => [s.id, s])),
-    routes: new Map(data.routes.map((r) => [r.id, r])),
-    exceptions: new Map(),
-    policies: new Map(defaultPolicies().map((p) => [p.actionType, p])),
-    agentRuns: new Map(),
-    agentSteps: [],
-    agentActions: [],
-    communications: [],
-    approvals: new Map(),
-    auditLog: [],
-    pendingDispatchProposals: new Map(),
-    seed,
-    demoRunning: false,
-    demoCompletedAt: null,
-    seq: 0,
-  };
-}
+// Facade over the active StateRepository (see lib/domain/repository.ts).
+// Everything else in lib/ keeps calling getState()/resetState() exactly as
+// before; which backend sits behind them is decided once, here. `globalThis`
+// caching keeps a single repository instance across Next.js dev-mode module
+// reloads, which is what kept the original single-object store stable.
 
 declare global {
-  var __NEXUS_STATE__: NexusState | undefined;
+  var __NEXUS_REPOSITORY__: StateRepository | undefined;
+}
+
+export type BackendEnv = { NEXUS_STATE_BACKEND?: string; DATABASE_URL?: string };
+
+/** NEXUS_STATE_BACKEND selects the backend: "memory" (default) or "postgres". */
+export function selectedBackend(env: BackendEnv = process.env as BackendEnv): StateBackend {
+  const raw = (env.NEXUS_STATE_BACKEND ?? "memory").trim().toLowerCase();
+  if (raw === "memory" || raw === "postgres") return raw;
+  throw new Error(`Unknown NEXUS_STATE_BACKEND "${raw}" (expected "memory" or "postgres")`);
+}
+
+export function createDefaultRepository(env: BackendEnv = process.env as BackendEnv): StateRepository {
+  if (selectedBackend(env) === "postgres") {
+    return new PostgresStateRepository(getPool(env.DATABASE_URL));
+  }
+  return new InMemoryStateRepository();
+}
+
+export function getRepository(): StateRepository {
+  if (!globalThis.__NEXUS_REPOSITORY__) {
+    globalThis.__NEXUS_REPOSITORY__ = createDefaultRepository();
+  }
+  return globalThis.__NEXUS_REPOSITORY__;
+}
+
+/** Swap the active repository (tests, or process start-up wiring). */
+export function setRepository(repository: StateRepository): StateRepository {
+  globalThis.__NEXUS_REPOSITORY__ = repository;
+  return repository;
 }
 
 export function getState(): NexusState {
-  if (!globalThis.__NEXUS_STATE__) {
-    globalThis.__NEXUS_STATE__ = buildState();
-  }
-  return globalThis.__NEXUS_STATE__;
+  return getRepository().getState();
 }
 
 export function resetState(seed: number = DEMO_SEED): NexusState {
-  globalThis.__NEXUS_STATE__ = buildState(seed);
-  return globalThis.__NEXUS_STATE__;
+  return getRepository().resetState(seed);
+}
+
+/** Hydrate the working set from the active backend (no-op in memory). */
+export function loadState(): Promise<NexusState> {
+  return getRepository().load();
+}
+
+/** Flush the working set to the active backend (no-op in memory). */
+export function persistState(): Promise<void> {
+  return getRepository().persist();
 }
 
 let idCounter = 0;

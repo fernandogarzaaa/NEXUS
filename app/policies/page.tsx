@@ -1,10 +1,12 @@
 import PageHeader from "@/components/PageHeader";
 import PolicyRow from "@/components/PolicyRow";
 import { listPolicies } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 export const dynamic = "force-dynamic";
 
-export default function PoliciesPage() {
+export default async function PoliciesPage() {
+  await loadState();
   const policies = listPolicies();
 
   return (

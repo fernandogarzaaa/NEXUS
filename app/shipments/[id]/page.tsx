@@ -11,6 +11,7 @@ import {
   AutonomyBadge,
 } from "@/components/badges";
 import { getShipmentDetail } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -31,6 +32,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ShipmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await loadState();
   const detail = getShipmentDetail(id);
   if (!detail) notFound();
 
