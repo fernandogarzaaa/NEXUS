@@ -74,12 +74,40 @@ npm install
 | `ANTHROPIC_MODEL` | Overrides the model used for narration (default `claude-sonnet-5`). |
 | `NEXUS_ACCESS_TOKEN` | Shared access token. When set, every page and Server Action requires signing in at `/login` with this token (12 h `HttpOnly`, `SameSite=Lax` session cookie). |
 | `NEXUS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a public throwaway demo without a token. Without a token and without this flag, production builds refuse all state-changing actions (approve/reject, reset, run scenario, policy edits); `next dev` and tests stay open. |
+| `NEXUS_STATE_BACKEND` | `memory` (default: in-process, resets on restart) or `postgres` (durable). See "State backend" below. |
+| `DATABASE_URL` | Postgres connection string. Required when `NEXUS_STATE_BACKEND=postgres`. |
+| `DATABASE_SSL` | Set to `1` for TLS with certificate verification against the system trust store. |
+| `NEXUS_TEST_DATABASE_URL` | A throwaway database the Postgres integration tests may wipe. Unset: those tests are skipped. |
 
 No `.env` file is required for the default (offline) experience in `next dev`.
 
 **Deploying publicly:** set `NEXUS_ACCESS_TOKEN` (or explicitly opt out with
 `NEXUS_ALLOW_UNAUTHENTICATED=1`). The gate is enforced twice: in `proxy.ts`
 (Next.js 16's replacement for `middleware.ts`) and inside every Server Action.
+
+### State backend
+
+By default NEXUS keeps its working set in memory, rebuilt from the
+deterministic seed on every start. To keep state across restarts and get a
+real SQL surface, point it at Postgres:
+
+```bash
+export NEXUS_STATE_BACKEND=postgres
+export DATABASE_URL=postgres://user:pass@host:5432/nexus
+npm run db:migrate          # applies db/migrations/*.sql (forward-only, idempotent)
+npm run db:seed             # loads the same demo set the memory backend starts with
+npm run db:seed -- --force  # replaces whatever is there with the demo set
+```
+
+An empty, migrated database is seeded automatically on the app's first
+request, so `db:seed` is only needed to reset or to pre-load. The schema
+stores every canonical record as `jsonb` with generated, indexed columns
+for ids, statuses and foreign keys (see `db/migrations/0001_init.sql`).
+Agents, tools and queries are unchanged between backends: they all run
+against one in-process working set that a `StateRepository`
+(`lib/domain/repository.ts`) hydrates before each request and flushes after
+each Server Action. This supports one NEXUS server process per database;
+multi-instance coordination is not built.
 
 ## Running the application
 
@@ -133,7 +161,10 @@ scenario (including a reproducibility check across repeated runs).
 ```
 app/                   Next.js routes (Server Components + Server Actions)
 components/             UI components
-lib/domain/              Types, seeded data generator, in-memory store, policies
+lib/domain/              Types, seeded data generator, NexusState + StateRepository (memory / Postgres), policies
+lib/db/                   Postgres pool, migration runner, seed loader
+db/migrations/             Forward-only SQL migrations
+scripts/                   db:migrate / db:seed entry points
 lib/agents/               Tool layer, policy engine, reasoner, orchestrator, the three agents
 lib/sim/                   Simulation engine + hero demo script
 lib/queries.ts             Read-side selectors for the UI
@@ -146,12 +177,13 @@ docs/demo/                   Demo script
 
 ## Key architecture decisions (and why)
 
-- **In-memory store, not a database.** The POC's requirements — a
-  reproducible seeded dataset, instant reset, deterministic demo — are
-  better served by an in-memory snapshot than by database seed/reset
-  tooling. The production translation path is documented and
-  intentionally a contained swap: see
-  [`docs/architecture/data-model.md`](docs/architecture/data-model.md).
+- **One in-process working set, pluggable persistence.** The POC's
+  requirements — a reproducible seeded dataset, instant reset,
+  deterministic demo — are served by an in-memory working set. A
+  `StateRepository` owns that set: the in-memory implementation is the
+  default, and the Postgres implementation hydrates and flushes the same
+  set behind a flag, so no agent or tool code knows which backend is in
+  use. See [`docs/architecture/data-model.md`](docs/architecture/data-model.md).
 - **Deterministic decision logic, optional LLM narration.** The hero demo
   must be reproducible and the POC must not require network access. The
   reasoner's ranking is a deterministic scoring function; an LLM (if
@@ -171,8 +203,9 @@ docs/demo/                   Demo script
   a real mapping/routing provider.
 - ETA/routing math is distance-based, not a real routing graph —
   intentional; real routing integration is Phase 3 scope.
-- The in-memory store is single-process and resets on restart; see the
-  data model doc for the Postgres migration path.
+- The default in-memory backend is single-process and resets on restart.
+  The Postgres backend is durable but still assumes a single NEXUS server
+  process per database (no multi-writer coordination).
 - All communications are simulated (no real email/SMS/EDI); see the
   roadmap for the Phase 2/3 integration path.
 

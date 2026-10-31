@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `StateRepository` interface (`lib/domain/repository.ts`) extracted from the
+  in-memory store; `lib/domain/store.ts` is now a facade with `loadState()` /
+  `persistState()` in addition to `getState()` / `resetState()`. In-memory
+  stays the default and is behaviourally unchanged.
+- Postgres backend behind `NEXUS_STATE_BACKEND=postgres` + `DATABASE_URL`
+  (`lib/domain/postgresRepository.ts`): canonical records as `jsonb` with
+  generated, indexed columns; insertion order preserved; incremental persist
+  for append-only tables. `npm run db:migrate` applies `db/migrations/*.sql`;
+  `npm run db:seed [-- --force]` loads the deterministic demo set. An empty
+  migrated database is seeded on first request.
+- Pages hydrate the working set before reading; every Server Action hydrates
+  before and flushes after its mutation (both no-ops in memory).
+- Postgres integration tests (skipped unless `NEXUS_TEST_DATABASE_URL` is
+  set); CI now runs them against a `postgres:16` service.
+
 ## [0.2.1] - 2026-10-13
 
 ### Fixed

@@ -32,6 +32,7 @@ lib/
     seed.ts                   Deterministic seeded data generator
     state.ts                  NexusState working set, buildState, snapshot (de)serialisation
     repository.ts             StateRepository interface + in-memory implementation (default)
+    postgresRepository.ts     Postgres implementation (NEXUS_STATE_BACKEND=postgres)
     store.ts                  Facade: getState/resetState/loadState/persistState over the active repository
   agents/
     tools.ts                 Typed, zod-validated tool layer — the ONLY way state is mutated
@@ -72,9 +73,18 @@ interface StateRepository {
 `getState()` exactly as before. The in-memory implementation is the
 default and is behaviourally identical to the original single-object
 store; nothing outside `lib/domain` holds a direct reference to the
-underlying `Map`s. A durable backend implements the same interface and is
-selected by configuration, not by code changes in the agents, the policy
-engine or the UI.
+underlying `Map`s. The Postgres implementation
+(`lib/domain/postgresRepository.ts`) is selected by
+`NEXUS_STATE_BACKEND=postgres` and needs no code changes in the agents,
+the policy engine or the UI.
+
+Request lifecycle with a durable backend: every page awaits `loadState()`
+before reading (first call hydrates, later calls return the cached working
+set), and every Server Action runs `loadState()` → mutation through the
+tool layer → `persistState()`. Persist upserts keyed entities, deletes
+keys that disappeared, appends new rows of the append-only lists from a
+watermark, and runs inside one transaction. One server process per
+database is the supported topology.
 
 ## The read/write split
 

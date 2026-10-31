@@ -3,10 +3,12 @@ import PageHeader from "@/components/PageHeader";
 import AutoRefresh from "@/components/AutoRefresh";
 import { SeverityBadge, ExceptionStatusBadge, AgentRunStatusBadge, AutonomyBadge } from "@/components/badges";
 import { listExceptions } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 export const dynamic = "force-dynamic";
 
-export default function ExceptionsPage() {
+export default async function ExceptionsPage() {
+  await loadState();
   const exceptions = listExceptions();
 
   return (

@@ -5,6 +5,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import OpsMap from "@/components/OpsMap";
 import { SeverityBadge, ExceptionStatusBadge, AgentRunStatusBadge } from "@/components/badges";
 import { getSummary, listExceptions, listFacilities, listShipments, listAgentActivity } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "danger" }) {
   const color = tone === "danger" ? "var(--danger)" : tone === "warn" ? "var(--warn)" : "var(--text)";
@@ -22,7 +23,8 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: "ok"
 
 export const dynamic = "force-dynamic";
 
-export default function CommandCenterPage() {
+export default async function CommandCenterPage() {
+  await loadState();
   const summary = getSummary();
   const exceptions = listExceptions().slice(0, 6);
   const facilities = listFacilities();

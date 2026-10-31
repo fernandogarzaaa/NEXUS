@@ -52,12 +52,15 @@ The repository decides where the working set comes from and where it goes:
 
 - `InMemoryStateRepository` (default): the working set is the storage.
   `load()`/`persist()` are no-ops. This is the POC behaviour, unchanged.
-- A durable backend implements the same interface: `load()` hydrates the
-  working set from tables with the same shape as the `Map`s above, and
-  `persist()` flushes it after a mutation boundary. `id` fields are already
-  globally-unique strings suitable as primary keys and foreign keys
-  (`shipmentId`, `agentRunId`, ...) already exist as plain string
-  references, so no relational redesign is needed.
+- `PostgresStateRepository` (`NEXUS_STATE_BACKEND=postgres`): `load()`
+  hydrates the working set from one table per entity and `persist()`
+  flushes it after a mutation boundary. Each table stores the canonical
+  record as `jsonb` in `data`, plus columns **generated from** `data`
+  (status, foreign keys, timestamps) for SQL reporting and indexes, and an
+  `ord` column so Map insertion order survives the round trip. The schema
+  is `db/migrations/0001_init.sql`; `id` fields were already
+  globally-unique strings, so they are the primary keys as-is and
+  `policies` is keyed by `action_type` like the in-memory Map.
 
 `serializeState`/`deserializeState` (`lib/domain/state.ts`) are the
 canonical plain-JSON projection of the working set; every backend and the

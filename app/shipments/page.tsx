@@ -2,10 +2,12 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { ShipmentStatusBadge, PriorityBadge } from "@/components/badges";
 import { listShipments } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 export const dynamic = "force-dynamic";
 
-export default function ShipmentsPage() {
+export default async function ShipmentsPage() {
+  await loadState();
   const shipments = listShipments();
   return (
     <div>

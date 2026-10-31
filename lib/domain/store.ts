@@ -1,5 +1,7 @@
 import { DEMO_SEED } from "./seed";
-import { InMemoryStateRepository, type StateRepository } from "./repository";
+import { InMemoryStateRepository, type StateBackend, type StateRepository } from "./repository";
+import { PostgresStateRepository } from "./postgresRepository";
+import { getPool } from "../db/pg";
 import type { NexusState } from "./state";
 
 export type { NexusState } from "./state";
@@ -14,7 +16,19 @@ declare global {
   var __NEXUS_REPOSITORY__: StateRepository | undefined;
 }
 
-export function createDefaultRepository(): StateRepository {
+export type BackendEnv = { NEXUS_STATE_BACKEND?: string; DATABASE_URL?: string };
+
+/** NEXUS_STATE_BACKEND selects the backend: "memory" (default) or "postgres". */
+export function selectedBackend(env: BackendEnv = process.env as BackendEnv): StateBackend {
+  const raw = (env.NEXUS_STATE_BACKEND ?? "memory").trim().toLowerCase();
+  if (raw === "memory" || raw === "postgres") return raw;
+  throw new Error(`Unknown NEXUS_STATE_BACKEND "${raw}" (expected "memory" or "postgres")`);
+}
+
+export function createDefaultRepository(env: BackendEnv = process.env as BackendEnv): StateRepository {
+  if (selectedBackend(env) === "postgres") {
+    return new PostgresStateRepository(getPool(env.DATABASE_URL));
+  }
   return new InMemoryStateRepository();
 }
 

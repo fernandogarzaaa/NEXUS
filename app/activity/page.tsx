@@ -3,6 +3,7 @@ import PageHeader from "@/components/PageHeader";
 import AutoRefresh from "@/components/AutoRefresh";
 import { AgentRunStatusBadge } from "@/components/badges";
 import { listAgentActivity } from "@/lib/queries";
+import { loadState } from "@/lib/domain/store";
 
 const PHASE_COLOR: Record<string, string> = {
   DETECT: "var(--danger)",
@@ -27,7 +28,8 @@ const AGENT_LABEL: Record<string, string> = {
 
 export const dynamic = "force-dynamic";
 
-export default function ActivityPage() {
+export default async function ActivityPage() {
+  await loadState();
   const entries = listAgentActivity(300);
 
   return (
