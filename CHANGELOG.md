@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   constant-time secret comparison, tenant binding, pagination and filters.
   Every request with a recognised key is audited through the tool layer
   (`recordApiAccess`). `proxy.ts` leaves `/api/v1/*` to key auth.
+- Legacy migration harness, dry run only (`lib/migration/harness.ts`,
+  `npm run migrate:dry-run`): read-only source snapshot (SHA-256, optional
+  local copy), mapping to canonical types, per-entity counts, duplicates
+  (never merged; every member quarantined, identical vs conflicting),
+  missing fields, dangling references, quarantined rows with reasons, and
+  would-create / would-update (field diffs) / unchanged classification
+  against the current store. No write path to the source or the store.
 
 ## [0.2.1] - 2026-10-13
 

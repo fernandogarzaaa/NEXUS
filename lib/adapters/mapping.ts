@@ -289,9 +289,14 @@ export function mapRow(
 
   const parsed = canonicalSchemas[entity].safeParse(record);
   const missingFields: string[] = [];
+  // A field whose rule already failed (unmapped value, bad number/date) is
+  // reported once, by that error, not again as "missing" or "invalid".
+  const erroredPaths = errors.map((e) => e.split(": ")[0]);
+  const alreadyExplained = (p: string) => erroredPaths.some((ep) => ep === p || ep.startsWith(`${p}.`) || p.startsWith(`${ep}.`));
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       const p = issue.path.join(".");
+      if (alreadyExplained(p)) continue;
       if (getAtPath(record, issue.path) === undefined) {
         if (!missingFields.includes(p)) missingFields.push(p);
       } else {

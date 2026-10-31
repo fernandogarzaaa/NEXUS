@@ -141,6 +141,21 @@ to the audit log. Routes are backed by `lib/queries.ts` and the tool layer,
 never by direct store access. Full route table, scopes and key format:
 [`docs/architecture/api.md`](docs/architecture/api.md).
 
+### Legacy migration harness (dry run only)
+
+```bash
+npm run migrate:dry-run -- --mapping adapters/generic/mapping.json [--entity shipment] [--out report.json] [--snapshot-dir ./snapshots]
+```
+
+Takes a read-only snapshot of the source through the adapter layer (with a
+SHA-256 of what was read and an optional local copy), maps every row to
+the canonical types, and reports counts, duplicates (by source id and by
+canonical id, identical vs conflicting), missing fields per row and in
+aggregate, dangling references, quarantined rows with reasons, and what a
+real migration would create, update or leave unchanged. There is no
+non-dry-run mode: the harness never writes to the source or to NEXUS, and
+never merges duplicates. Details: [`docs/architecture/migration.md`](docs/architecture/migration.md).
+
 ## Running the application
 
 ```bash
@@ -199,6 +214,7 @@ lib/adapters/             Read-only CSV/REST source adapters, mapping engine, re
 lib/apiAuth.ts            Scoped API-key auth (pure) for the public read API
 lib/api/handler.ts        Authenticated, audited, read-only route wrapper
 app/api/v1/               Public read API routes
+lib/migration/            Legacy migration harness (dry run only)
 adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
 db/migrations/             Forward-only SQL migrations
 scripts/                   db:migrate / db:seed entry points

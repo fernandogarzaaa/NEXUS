@@ -103,6 +103,7 @@ describe("generic csv adapter + reconciliation (proof of the seam)", () => {
     expect(s.quarantined[0].missingFields).toContain("customerName");
     expect(s.quarantined[0].errors.join(" ")).toMatch(/status/);
     expect(s.quarantined[0].errors.join(" ")).toMatch(/weightLbs/);
+    expect(s.quarantined[0].missingFields).toEqual(["customerName"]); // errored fields are not double-reported as missing
 
     const summary = summarizeReconciliation(report);
     expect(summary).toContain("shipment  source rows   11");
