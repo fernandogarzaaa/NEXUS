@@ -1,0 +1,96 @@
+{
+  "name": "generic-proof-of-seam",
+  "system": "GENERIC (no Senor Tech system name supplied; this mapping proves the adapter seam, not a real system)",
+  "readOnly": true,
+  "entities": {
+    "shipment": {
+      "source": { "type": "csv", "path": "shipments.csv" },
+      "sourceIdField": "ConsignmentNo",
+      "reconcile": { "ignoreFields": [] },
+      "fields": {
+        "id": { "template": "SHP-{ConsignmentNo}" },
+        "referenceCode": { "from": "RefCode" },
+        "customerName": { "from": "Consignee" },
+        "originFacilityId": { "template": "FAC-{FromDepot}" },
+        "destinationFacilityId": { "template": "FAC-{ToDepot}" },
+        "driverId": { "template": "D-{DriverCode}", "nullIfEmpty": true },
+        "vehicleId": { "template": "VEH-{Fleet}", "nullIfEmpty": true },
+        "routeId": { "template": "RTE-SHP-{ConsignmentNo}" },
+        "status": {
+          "from": "Status",
+          "map": { "BOOKED": "SCHEDULED", "ON ROAD": "IN_TRANSIT", "AT DEPOT": "AT_FACILITY", "HELD": "EXCEPTION", "POD": "DELIVERED", "CANX": "CANCELLED" }
+        },
+        "priority": { "from": "PriorityCode", "map": { "1": "CRITICAL", "2": "HIGH", "3": "STANDARD" } },
+        "weightLbs": { "from": "WeightKg", "transform": "kgToLbs" },
+        "distanceMiles": { "from": "DistanceKm", "transform": "kmToMiles" },
+        "deliveryWindowStart": { "from": "WindowFrom", "transform": "isoDate" },
+        "deliveryWindowEnd": { "from": "WindowTo", "transform": "isoDate" },
+        "scheduledEta": { "from": "PlannedETA", "transform": "isoDate" },
+        "currentEta": { "from": "CurrentETA", "transform": "isoDate" },
+        "appointment": {
+          "presentWhen": "ApptDepot",
+          "object": {
+            "facilityId": { "template": "FAC-{ApptDepot}" },
+            "start": { "from": "ApptFrom", "transform": "isoDate" },
+            "end": { "from": "ApptTo", "transform": "isoDate" },
+            "status": { "from": "ApptStatus" }
+          }
+        },
+        "createdAt": { "from": "Created", "transform": "isoDate" },
+        "updatedAt": { "from": "Updated", "transform": "isoDate" }
+      }
+    },
+    "driver": {
+      "source": { "type": "csv", "path": "drivers.csv" },
+      "sourceIdField": "DriverCode",
+      "fields": {
+        "id": { "template": "D-{DriverCode}" },
+        "name": { "from": "FullName" },
+        "homeFacilityId": { "template": "FAC-{HomeDepot}" },
+        "status": { "from": "DutyStatus" },
+        "location": {
+          "object": {
+            "lat": { "from": "Lat", "transform": "number" },
+            "lng": { "from": "Lng", "transform": "number" }
+          }
+        },
+        "assignedShipmentIds": { "from": "AssignedConsignments", "transform": "stringList", "itemTemplate": "SHP-{value}", "default": [] },
+        "hoursOfServiceRemaining": { "from": "HosHours", "transform": "number" },
+        "onTimeRating": { "from": "OnTimePct", "transform": "percentToRatio" },
+        "vehicleId": { "template": "VEH-{Fleet}", "nullIfEmpty": true }
+      }
+    },
+    "vehicle": {
+      "source": { "type": "csv", "path": "vehicles.csv" },
+      "sourceIdField": "Fleet",
+      "fields": {
+        "id": { "template": "VEH-{Fleet}" },
+        "type": { "from": "BodyType" },
+        "capacityLbs": { "from": "PayloadKg", "transform": "kgToLbs" },
+        "status": { "from": "Status" },
+        "currentDriverId": { "template": "D-{DriverCode}", "nullIfEmpty": true }
+      }
+    },
+    "facility": {
+      "source": { "type": "csv", "path": "facilities.csv" },
+      "sourceIdField": "DepotCode",
+      "reconcile": { "ignoreFields": ["appointmentCapacity"] },
+      "fields": {
+        "id": { "template": "FAC-{DepotCode}" },
+        "name": { "from": "DepotName" },
+        "type": { "from": "DepotType" },
+        "city": { "from": "City" },
+        "state": { "from": "State" },
+        "location": {
+          "object": {
+            "lat": { "from": "Lat", "transform": "number" },
+            "lng": { "from": "Lng", "transform": "number" }
+          }
+        },
+        "operatingHoursStart": { "from": "OpensHour", "transform": "integer" },
+        "operatingHoursEnd": { "from": "ClosesHour", "transform": "integer" },
+        "appointmentCapacity": { "const": [] }
+      }
+    }
+  }
+}

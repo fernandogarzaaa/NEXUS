@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before and flushes after its mutation (both no-ops in memory).
 - Postgres integration tests (skipped unless `NEXUS_TEST_DATABASE_URL` is
   set); CI now runs them against a `postgres:16` service.
+- Read-only external adapter seam (`lib/adapters/`): Zod canonical schemas
+  (`lib/domain/schemas.ts`), a dependency-free CSV parser, a GET-only REST
+  adapter with env-sourced bearer auth and pagination, a declarative mapping
+  file (`from` / `template` / `const` / `map` / `transform` / nested
+  `object`), and a reconciliation report (matched with differences,
+  unmatched, missing in source, duplicate source ids, duplicate canonical
+  ids, quarantined rows with missing fields). `npm run reconcile`. A generic
+  example lives in `adapters/generic/` because no Senor system name was
+  supplied.
 
 ## [0.2.1] - 2026-10-13
 

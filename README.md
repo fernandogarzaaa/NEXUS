@@ -109,6 +109,26 @@ against one in-process working set that a `StateRepository`
 each Server Action. This supports one NEXUS server process per database;
 multi-instance coordination is not built.
 
+### External adapters and reconciliation (proof of the seam)
+
+`lib/adapters/` reads an external system **read-only** (CSV extract or a
+GET-only REST endpoint), maps rows to the canonical `Shipment` / `Driver` /
+`Vehicle` / `Facility` types through a declarative mapping file, and
+reconciles them against the canonical store:
+
+```bash
+npm run reconcile -- --mapping adapters/generic/mapping.json [--entity shipment] [--out report.json]
+```
+
+The report lists matched records (with field-level differences), source
+records NEXUS does not know, canonical records the source did not present,
+duplicate source ids, rows that map to the same canonical id, and
+quarantined rows with the exact missing fields and errors. Nothing is
+written to the source or the store. `adapters/generic/` is a generic
+example built from the demo seed with deliberate anomalies because no
+real system name was supplied; see its README for how to point it at a
+real export.
+
 ## Running the application
 
 ```bash
@@ -163,6 +183,8 @@ app/                   Next.js routes (Server Components + Server Actions)
 components/             UI components
 lib/domain/              Types, seeded data generator, NexusState + StateRepository (memory / Postgres), policies
 lib/db/                   Postgres pool, migration runner, seed loader
+lib/adapters/             Read-only CSV/REST source adapters, mapping engine, reconciliation
+adapters/generic/          Example mapping + legacy-style CSV extracts (proof of the seam)
 db/migrations/             Forward-only SQL migrations
 scripts/                   db:migrate / db:seed entry points
 lib/agents/               Tool layer, policy engine, reasoner, orchestrator, the three agents
