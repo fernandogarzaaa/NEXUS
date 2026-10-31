@@ -27,7 +27,12 @@
 app/                        Next.js routes (Server Components + Server Actions as the only write path)
 components/                 Presentational + thin client components (buttons, forms, badges)
 lib/
-  domain/                    Types, seeded data generator, in-memory store, default policies
+  domain/
+    types.ts                  Operational + agent-execution types
+    seed.ts                   Deterministic seeded data generator
+    state.ts                  NexusState working set, buildState, snapshot (de)serialisation
+    repository.ts             StateRepository interface + in-memory implementation (default)
+    store.ts                  Facade: getState/resetState/loadState/persistState over the active repository
   agents/
     tools.ts                 Typed, zod-validated tool layer — the ONLY way state is mutated
     policyEngine.ts           Autonomy policy evaluation
@@ -45,21 +50,31 @@ lib/
 tests/                       Vitest suite (agent behavior, system state, hero e2e)
 ```
 
-## Why an in-memory store, and what changes to make it production-real
+## The StateRepository seam
 
 The POC's requirements — a reproducible seeded dataset, a one-click reset,
-a deterministic hero scenario — are better served by an in-memory
-snapshot than by a database that would need seeding/reset tooling built
-just for the demo. The store lives behind `lib/domain/store.ts`'s
-`getState()`/`resetState()` functions; nothing outside that module holds a
-direct reference to the underlying `Map`s.
+a deterministic hero scenario — are served by an in-memory working set
+(`NexusState`, `lib/domain/state.ts`). Since 0.3.0 that working set is
+owned by a `StateRepository` (`lib/domain/repository.ts`):
 
-**To move to production (Phase 2, see `docs/product/roadmap.md`):**
-Replace `store.ts`'s in-memory `Map`s with a Postgres-backed repository
-implementing the same read/write functions. Because `lib/agents/tools.ts`
-and `lib/queries.ts` are the only modules that touch `getState()`
-directly, this is a contained swap — agent logic, the policy engine, and
-the UI do not change.
+```
+interface StateRepository {
+  backend: "memory" | "postgres";
+  getState(): NexusState;            // the synchronous working set tools mutate in place
+  resetState(seed?): NexusState;     // rebuild deterministically from the seed
+  load(): Promise<NexusState>;       // hydrate from durable storage (no-op in memory)
+  persist(): Promise<void>;          // flush to durable storage (no-op in memory)
+}
+```
+
+`lib/domain/store.ts` is a thin facade over the active repository, so
+`lib/agents/tools.ts`, `lib/queries.ts` and the agents keep calling
+`getState()` exactly as before. The in-memory implementation is the
+default and is behaviourally identical to the original single-object
+store; nothing outside `lib/domain` holds a direct reference to the
+underlying `Map`s. A durable backend implements the same interface and is
+selected by configuration, not by code changes in the agents, the policy
+engine or the UI.
 
 ## The read/write split
 
