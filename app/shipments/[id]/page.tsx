@@ -12,6 +12,7 @@ import {
 } from "@/components/badges";
 import { getShipmentDetail } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { formatLocal, formatLocalTime } from "@/lib/domain/locale";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -25,7 +26,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function fmt(dt: string) {
-  return new Date(dt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return formatLocal(dt);
 }
 
 export const dynamic = "force-dynamic";
@@ -55,8 +56,8 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
         <div className="panel p-5 grid grid-cols-2 md:grid-cols-4 gap-5">
           <Field label="Driver" value={driver ? `${driver.name} (${driver.id})` : "Unassigned"} />
           <Field label="Vehicle" value={vehicle ? `${vehicle.type.replace(/_/g, " ")} — ${vehicle.id}` : "—"} />
-          <Field label="Distance" value={`${shipment.distanceMiles} mi`} />
-          <Field label="Weight" value={`${shipment.weightLbs.toLocaleString()} lbs`} />
+          <Field label="Distance" value={`${shipment.distanceKm} km`} />
+          <Field label="Weight" value={`${shipment.weightKg.toLocaleString("en-AU")} kg`} />
           <Field label="Scheduled ETA" value={fmt(shipment.scheduledEta)} />
           <Field
             label="Current ETA"
@@ -159,7 +160,7 @@ export default async function ShipmentDetailPage({ params }: { params: Promise<{
                     {run.steps.map((step) => (
                       <li key={step.id} className="text-[12.5px]">
                         <span className="font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
-                          {new Date(step.timestamp).toLocaleTimeString()}
+                          {formatLocalTime(step.timestamp)}
                         </span>{" "}
                         <span className="font-medium">{step.label}</span>
                         <span style={{ color: "var(--text-muted)" }}> — {step.detail}</span>

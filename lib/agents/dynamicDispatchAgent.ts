@@ -1,4 +1,5 @@
 import { getState, nextId, nowIso } from "../domain/store";
+import { hoursNeeded } from "../domain/locale";
 import type { AgentPhase, AgentRun, AgentStep, Driver, Shipment } from "../domain/types";
 import { evaluatePolicy } from "./policyEngine";
 import { notifyDriverOfReassignment, notifyOpsEscalation } from "./communicationAgent";
@@ -51,7 +52,7 @@ export function evaluateDispatchAssignment(shipmentId: string): DispatchCheckRes
     return { shipmentId, reassignmentNeeded: false, run: null, reason: "Shipment not active." };
   }
   const driver = getDriver(shipment.driverId);
-  const neededHours = shipment.distanceMiles / 45;
+  const neededHours = hoursNeeded(shipment.distanceKm);
   const atRisk = driver.status === "DELAYED" || driver.hoursOfServiceRemaining < neededHours;
 
   if (!atRisk) {
@@ -65,7 +66,7 @@ export function evaluateDispatchAssignment(shipmentId: string): DispatchCheckRes
 
   const run = createRun(shipmentId, "DISPATCH_VALIDITY_CHECK");
   addStep(run.id, "DETECT", "Assignment validity concern", `${driver.name} (${driver.status}, ${driver.hoursOfServiceRemaining.toFixed(1)}h HOS) may not complete ${shipmentId} (needs ~${neededHours.toFixed(1)}h).`);
-  addStep(run.id, "CONTEXT", "Shipment + driver context retrieved", `${shipment.id} priority ${shipment.priority}, ${shipment.distanceMiles} mi remaining, current driver ${driver.id}.`);
+  addStep(run.id, "CONTEXT", "Shipment + driver context retrieved", `${shipment.id} priority ${shipment.priority}, ${shipment.distanceKm} km remaining, current driver ${driver.id}.`);
 
   const alt = findAlternativeDriver({ shipmentId });
   addStep(run.id, "REASON", "Searching for alternative driver", alt ? `Candidate found: ${alt.name} (${alt.hoursOfServiceRemaining.toFixed(1)}h HOS, ${(alt.onTimeRating * 100).toFixed(0)}% on-time).` : "No available alternative driver found.");
@@ -108,7 +109,7 @@ export function evaluateDispatchAssignment(shipmentId: string): DispatchCheckRes
       whatWillHappen: `${shipment.id} will be reassigned from ${driver.name} to ${alt.name}.`,
       why: `${driver.name} is ${driver.status === "DELAYED" ? "delayed" : "short on hours-of-service"} for the remaining ${neededHours.toFixed(1)}h route.`,
       expectedImpact: `Protects the delivery window; ${alt.name} has a ${(alt.onTimeRating * 100).toFixed(0)}% on-time rating.`,
-      estimatedCostUsd: 180,
+      estimatedCost: 180,
       slaImpactMin: 0,
       confidence: 0.82,
       contextNotes: [`Current driver HOS remaining: ${driver.hoursOfServiceRemaining.toFixed(1)}h`, `Route requires: ~${neededHours.toFixed(1)}h`],
@@ -238,7 +239,7 @@ export function requestReassignmentApproval(shipmentId: string, requester: Actio
     whatWillHappen: `${shipment.id} will be reassigned from ${current?.name ?? "unassigned"} to ${alt.name}.`,
     why: reason,
     expectedImpact: `${alt.name} has a ${(alt.onTimeRating * 100).toFixed(0)}% on-time rating and ${alt.hoursOfServiceRemaining.toFixed(1)}h HOS remaining.`,
-    estimatedCostUsd: 180,
+    estimatedCost: 180,
     slaImpactMin: 0,
     confidence: 0.75,
     contextNotes: [`Requested by ${who}`, `Policy: ${policyDecision.effectiveLevel}`],

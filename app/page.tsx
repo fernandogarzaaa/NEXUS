@@ -6,6 +6,7 @@ import OpsMap from "@/components/OpsMap";
 import { SeverityBadge, ExceptionStatusBadge, AgentRunStatusBadge } from "@/components/badges";
 import { getSummary, listExceptions, listFacilities, listShipments, listAgentActivity } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { formatLocalTime } from "@/lib/domain/locale";
 import { currentPrincipal } from "@/lib/authServer";
 
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" | "danger" }) {
@@ -88,7 +89,7 @@ export default async function CommandCenterPage() {
               {activity.map(({ step, run }) => (
                 <li key={step.id} className="text-[13px] flex gap-2">
                   <span className="shrink-0 font-mono text-[11px] pt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {new Date(step.timestamp).toLocaleTimeString()}
+                    {formatLocalTime(step.timestamp)}
                   </span>
                   <div>
                     <div className="font-medium">{step.label}</div>

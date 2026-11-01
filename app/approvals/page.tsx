@@ -5,6 +5,7 @@ import { ApprovalStatusBadge } from "@/components/badges";
 import ApprovalActions from "@/components/ApprovalActions";
 import { listApprovals } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { formatLocal, formatMoney } from "@/lib/domain/locale";
 import { currentPrincipal } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +74,7 @@ export default async function ApprovalsPage() {
                         Cost · SLA · Confidence
                       </dt>
                       <dd>
-                        ${a.estimatedCostUsd.toFixed(0)} · {a.slaImpactMin} min · {(a.confidence * 100).toFixed(0)}%
+                        {formatMoney(a.estimatedCost)} · {a.slaImpactMin} min · {(a.confidence * 100).toFixed(0)}%
                       </dd>
                     </div>
                   </dl>
@@ -126,7 +127,7 @@ export default async function ApprovalsPage() {
                     </td>
                     <td>{a.resolvedBy ?? "—"}</td>
                     <td className="text-[12px]" style={{ color: "var(--text-muted)" }}>
-                      {a.resolvedAt ? new Date(a.resolvedAt).toLocaleString() : "—"}
+                      {a.resolvedAt ? formatLocal(a.resolvedAt) : "—"}
                     </td>
                   </tr>
                 ))}

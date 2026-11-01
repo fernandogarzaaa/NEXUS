@@ -2,6 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import PolicyRow from "@/components/PolicyRow";
 import { listPolicies } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { currencyCode } from "@/lib/domain/locale";
 import { currentPrincipal } from "@/lib/authServer";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export default async function PoliciesPage() {
   await loadState();
   const principal = await currentPrincipal();
   const canEdit = Boolean(principal?.roles.includes("admin"));
+  const currency = currencyCode();
   const policies = listPolicies();
 
   return (
@@ -31,13 +33,13 @@ export default async function PoliciesPage() {
                 <th>Action Type</th>
                 <th>Current Level</th>
                 <th>Edit Level</th>
-                <th>Max Autonomous Cost (USD)</th>
+                <th>Max Autonomous Cost ({currency})</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {policies.map((p) => (
-                <PolicyRow key={p.actionType} policy={p} canEdit={canEdit} />
+                <PolicyRow key={p.actionType} policy={p} canEdit={canEdit} currency={currency} />
               ))}
             </tbody>
           </table>

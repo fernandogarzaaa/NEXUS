@@ -48,7 +48,7 @@ describe("mapping evaluation", () => {
     if (!result.ok) return;
     expect(result.record).toMatchObject({
       id: "SHP-1000", driverId: "D-01", vehicleId: "VEH-01", routeId: "RTE-SHP-1000", status: "IN_TRANSIT", priority: "CRITICAL",
-      weightLbs: 2205, distanceMiles: 100, appointment: null,
+      weightKg: 1000, distanceKm: 160.9, appointment: null,
     });
   });
 
@@ -59,7 +59,7 @@ describe("mapping evaluation", () => {
     expect(result.canonicalId).toBe("SHP-7");
     expect(result.missingFields).toEqual(expect.arrayContaining(["referenceCode", "customerName", "deliveryWindowStart", "createdAt"]));
     expect(result.errors.join("\n")).toMatch(/status: value "UNKNOWN" has no entry/);
-    expect(result.errors.join("\n")).toMatch(/weightLbs: "heavy" is not a number/);
+    expect(result.errors.join("\n")).toMatch(/weightKg: "heavy" is not a number/);
   });
 
   it("rejects a mapping file that is not declared read-only or has unknown keys", () => {
@@ -102,7 +102,7 @@ describe("generic csv adapter + reconciliation (proof of the seam)", () => {
     expect(s.quarantined[0].sourceId).toBe("1050");
     expect(s.quarantined[0].missingFields).toContain("customerName");
     expect(s.quarantined[0].errors.join(" ")).toMatch(/status/);
-    expect(s.quarantined[0].errors.join(" ")).toMatch(/weightLbs/);
+    expect(s.quarantined[0].errors.join(" ")).toMatch(/weightKg/);
     expect(s.quarantined[0].missingFields).toEqual(["customerName"]); // errored fields are not double-reported as missing
 
     const summary = summarizeReconciliation(report);
@@ -145,7 +145,7 @@ describe("rest adapter", () => {
         fields: {
           id: { template: "VEH-{fleetNo}" },
           type: { from: "body" },
-          capacityLbs: { from: "payloadKg", transform: "kgToLbs" },
+          capacityKg: { from: "payloadLbs", transform: "lbsToKg" },
           status: { from: "state", map: { active: "AVAILABLE", shop: "MAINTENANCE" } },
           currentDriverId: { const: null },
         },
@@ -156,8 +156,8 @@ describe("rest adapter", () => {
   it("issues GET requests only, sends the bearer token from the environment, and follows pagination", async () => {
     const calls: Array<{ url: string; method: string; auth?: string }> = [];
     const pages: Record<string, unknown> = {
-      "https://legacy.example/api/fleet": { data: { items: [{ fleetNo: "01", body: "REEFER", payloadKg: 10000, state: "active" }] }, links: { next: "https://legacy.example/api/fleet?page=2" } },
-      "https://legacy.example/api/fleet?page=2": { data: { items: [{ fleetNo: "02", body: "FLATBED", payloadKg: 20000, state: "shop" }] }, links: { next: null } },
+      "https://legacy.example/api/fleet": { data: { items: [{ fleetNo: "01", body: "REEFER", payloadLbs: 22046, state: "active" }] }, links: { next: "https://legacy.example/api/fleet?page=2" } },
+      "https://legacy.example/api/fleet?page=2": { data: { items: [{ fleetNo: "02", body: "FLATBED", payloadLbs: 44092, state: "shop" }] }, links: { next: null } },
     };
     const adapter = new RestSourceAdapter(
       mapping,
@@ -173,6 +173,8 @@ describe("rest adapter", () => {
     expect(rows.map((r) => r.sourceId)).toEqual(["01", "02"]);
     const mapped = rows.map((r) => mapRow("vehicle", mapping.entities.vehicle!, r.raw, r.locator));
     expect(mapped.every((m) => m.ok)).toBe(true);
+    // Imperial sources are converted to the canonical metric units.
+    expect(mapped.map((m) => (m.ok ? m.record.capacityKg : null))).toEqual([9999.9, 19999.8]); // 22046 and 44092 lbs
   });
 
   it("refuses to run without the named token and surfaces HTTP failures", async () => {

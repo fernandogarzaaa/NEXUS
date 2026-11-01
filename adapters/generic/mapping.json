@@ -21,8 +21,8 @@
           "map": { "BOOKED": "SCHEDULED", "ON ROAD": "IN_TRANSIT", "AT DEPOT": "AT_FACILITY", "HELD": "EXCEPTION", "POD": "DELIVERED", "CANX": "CANCELLED" }
         },
         "priority": { "from": "PriorityCode", "map": { "1": "CRITICAL", "2": "HIGH", "3": "STANDARD" } },
-        "weightLbs": { "from": "WeightKg", "transform": "kgToLbs" },
-        "distanceMiles": { "from": "DistanceKm", "transform": "kmToMiles" },
+        "weightKg": { "from": "WeightKg", "transform": "number" },
+        "distanceKm": { "from": "DistanceKm", "transform": "number" },
         "deliveryWindowStart": { "from": "WindowFrom", "transform": "isoDate" },
         "deliveryWindowEnd": { "from": "WindowTo", "transform": "isoDate" },
         "scheduledEta": { "from": "PlannedETA", "transform": "isoDate" },
@@ -66,7 +66,7 @@
       "fields": {
         "id": { "template": "VEH-{Fleet}" },
         "type": { "from": "BodyType" },
-        "capacityLbs": { "from": "PayloadKg", "transform": "kgToLbs" },
+        "capacityKg": { "from": "PayloadKg", "transform": "number" },
         "status": { "from": "Status" },
         "currentDriverId": { "template": "D-{DriverCode}", "nullIfEmpty": true }
       }

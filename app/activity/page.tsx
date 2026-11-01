@@ -4,6 +4,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import { AgentRunStatusBadge } from "@/components/badges";
 import { listAgentActivity } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { formatLocalTime } from "@/lib/domain/locale";
 
 const PHASE_COLOR: Record<string, string> = {
   DETECT: "var(--danger)",
@@ -50,7 +51,7 @@ export default async function ActivityPage() {
               {entries.map(({ step, run }, i) => (
                 <li key={step.id} className="flex gap-3 py-2.5" style={{ borderTop: i === 0 ? undefined : "1px solid var(--border)" }}>
                   <div className="w-[70px] shrink-0 text-right font-mono text-[11px] pt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {new Date(step.timestamp).toLocaleTimeString()}
+                    {formatLocalTime(step.timestamp)}
                   </div>
                   <div className="shrink-0 pt-1">
                     <span

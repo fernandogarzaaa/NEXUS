@@ -76,6 +76,8 @@ npm install
 | `NEXUS_SESSION_SECRET` | Required with `NEXUS_USERS`: at least 32 random characters used to sign session cookies. |
 | `NEXUS_ACCESS_TOKEN` | Shared access token. When set, every page and Server Action requires signing in at `/login` with this token (12 h `HttpOnly`, `SameSite=Lax` session cookie). |
 | `NEXUS_ALLOW_UNAUTHENTICATED` | Set to `1` to run a public throwaway demo without a token. Without a token and without this flag, production builds refuse all state-changing actions (approve/reject, reset, run scenario, policy edits); `next dev` and tests stay open. |
+| `NEXUS_TIMEZONE` | Operating timezone for facility hours, appointment slots and displayed times (default `Australia/Sydney`). |
+| `NEXUS_CURRENCY` | Currency of every cost and policy threshold (default `AUD`). Amounts are plain numbers; changing this relabels them, it does not convert. |
 | `NEXUS_STATE_BACKEND` | `memory` (default: in-process, resets on restart) or `postgres` (durable). See "State backend" below. |
 | `DATABASE_URL` | Postgres connection string. Required when `NEXUS_STATE_BACKEND=postgres`. |
 | `DATABASE_SSL` | Set to `1` for TLS with certificate verification against the system trust store. |
@@ -193,8 +195,9 @@ npm run dev
 ```
 
 Open `http://localhost:3000`. The app boots with a deterministic seeded
-dataset (63 shipments, 10 drivers, 5 facilities, 14 vehicles across five
-Texas metros).
+dataset (63 shipments, 10 drivers, 5 facilities, 14 vehicles on a regional
+New South Wales / ACT network around Sydney, Newcastle, Wollongong, Goulburn
+and Canberra), shown in Sydney time with costs in Australian dollars.
 
 - **Command Center** — fleet KPIs, route map, recent agent activity.
 - **Exception Queue** — every detected exception and its recovery status.
@@ -225,7 +228,7 @@ Other controls on the Command Center:
 npm test
 ```
 
-128 tests across 20 files covering: named users, signed sessions and role gating, knowledge retrieval (citations, NOT_FOUND, stale/missing/too-old sources), the MCP server (identity, tool visibility per scope and role, audit, approval-gated writes), the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
+136 tests across 21 files covering: the Australian locale (local hours across DST, currency formatting, kilometres, the NSW demo network and hero timing), the metric migration, named users, signed sessions and role gating, knowledge retrieval (citations, NOT_FOUND, stale/missing/too-old sources), the MCP server (identity, tool visibility per scope and role, audit, approval-gated writes), the StateRepository seam and backend selection, the Postgres backend (migrations, seeding, lossless persist/reload, run against a real database in CI), the read-only adapter seam and reconciliation report, the scoped-key public API, the dry-run migration harness, the access-token gate (login, session cookie, proxy, every Server Action refusing without a session), policy input validation, exception detection and severity,
 policy enforcement and threshold escalation, typed-tool input validation
 and idempotency, the full orchestration pipeline (autonomous execution,
 approval pause/resume, rejection/escalation, execution-failure retry),

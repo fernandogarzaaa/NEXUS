@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getState, nextId, nowIso } from "../domain/store";
+import { formatLocal, hoursNeeded, localHour } from "../domain/locale";
 import type {
   AgentAction,
   Approval,
@@ -128,7 +129,7 @@ export function findAlternativeDriver(
       d.id !== excludeDriverId &&
       d.id !== shipment.driverId &&
       d.status === "AVAILABLE" &&
-      d.hoursOfServiceRemaining >= shipment.distanceMiles / 45
+      d.hoursOfServiceRemaining >= hoursNeeded(shipment.distanceKm)
   );
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => b.onTimeRating - a.onTimeRating || b.hoursOfServiceRemaining - a.hoursOfServiceRemaining);
@@ -155,7 +156,7 @@ export function rescheduleAppointment(input: z.infer<typeof rescheduleAppointmen
     throw new ToolExecutionError("rescheduleAppointment", `${shipmentId} has no facility appointment`);
   }
   const facility = getFacility(shipment.appointment.facilityId);
-  const hour = new Date(newStart).getUTCHours();
+  const hour = localHour(newStart);
   const slot = facility.appointmentCapacity.find((c) => c.hour === hour);
   if (slot && slot.booked >= slot.capacity) {
     throw new ToolExecutionError(
@@ -174,7 +175,7 @@ export function rescheduleAppointment(input: z.infer<typeof rescheduleAppointmen
     entityType: "Shipment",
     entityId: shipmentId,
     agentRunId,
-    detail: `Appointment moved from ${before.start} to ${newStart} at ${facility.name}`,
+    detail: `Appointment moved from ${formatLocal(before.start)} to ${formatLocal(newStart)} at ${facility.name}`,
   });
   return shipment.appointment;
 }
@@ -288,7 +289,7 @@ const requestApprovalSchema = z.object({
   whatWillHappen: z.string(),
   why: z.string(),
   expectedImpact: z.string(),
-  estimatedCostUsd: z.number().min(0),
+  estimatedCost: z.number().min(0),
   slaImpactMin: z.number(),
   confidence: z.number().min(0).max(1),
   contextNotes: z.array(z.string()),
@@ -370,7 +371,7 @@ export function applyEtaImprovement(input: z.infer<typeof applyEtaImprovementSch
     entityType: "Shipment",
     entityId: shipmentId,
     agentRunId,
-    detail: `ETA improved by ${improvementMin} min (from ${before} to ${shipment.currentEta})`,
+    detail: `ETA improved by ${improvementMin} min (from ${formatLocal(before)} to ${formatLocal(shipment.currentEta)})`,
   });
   return shipment;
 }

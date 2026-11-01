@@ -10,9 +10,9 @@ against the canonical store. It is not a real Senor system.
   from (`csv` file or `rest` endpoint, GET only), which source column is
   the source id, and how each canonical field is derived (`from`,
   `template`, `const`, `map`, `transform`, nested `object`).
-- `*.csv` — legacy-style extracts generated from the demo seed with
-  Australian-flavoured column names and metric units, plus deliberate
-  anomalies: a duplicated consignment row, a second row for the hero
+- `*.csv` — legacy-style extracts generated from the demo seed by
+  `npm run fixtures:generic` (short depot codes, numeric ids, local status
+  words, metric units), plus deliberate anomalies: a duplicated consignment row, a second row for the hero
   consignment with a different driver, a consignment NEXUS does not know
   (`9999`), a row with a blank consignee and an unmapped status, and a
   driver with an unparsable latitude.

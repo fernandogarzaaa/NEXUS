@@ -9,7 +9,7 @@ describe("exception recovery orchestration", () => {
   beforeEach(() => resetState());
 
   it("never executes or mutates state when the governing policy is OBSERVE", async () => {
-    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "OBSERVE", maxCostUsd: null });
+    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "OBSERVE", maxCost: null });
     const state = getState();
     const shipmentBefore = { ...state.shipments.get(HERO_SHIPMENT_ID)! };
 
@@ -71,7 +71,7 @@ describe("exception recovery orchestration", () => {
 
   it("pauses for human approval when the policy requires it, then executes on approval", async () => {
     // Force every appointment reschedule to require approval, regardless of cost.
-    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "HIGH_IMPACT_APPROVAL", maxCostUsd: null });
+    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "HIGH_IMPACT_APPROVAL", maxCost: null });
 
     const { run } = await detectDelayException(HERO_SHIPMENT_ID, 45, "DRIVER_DELAYED");
     expect(run!.status).toBe("AWAITING_APPROVAL");
@@ -88,7 +88,7 @@ describe("exception recovery orchestration", () => {
   });
 
   it("escalates and alerts ops when a human rejects the proposed action", async () => {
-    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "HIGH_IMPACT_APPROVAL", maxCostUsd: null });
+    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "HIGH_IMPACT_APPROVAL", maxCost: null });
     const { run, exception } = await detectDelayException(HERO_SHIPMENT_ID, 45, "DRIVER_DELAYED");
 
     const resumed = resumeExceptionRecoveryAfterApproval(run!.id, false, "Test Operator");

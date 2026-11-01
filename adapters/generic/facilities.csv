@@ -1,6 +1,6 @@
 DepotCode,DepotName,DepotType,City,State,Lat,Lng,OpensHour,ClosesHour
-DAL,Dallas Regional DC,DISTRIBUTION_CENTER,Dallas,TX,32.7767,-96.797,6,20
-HOU,Houston Gulf Warehouse,WAREHOUSE,Houston,TX,29.7604,-95.3698,6,22
-AUS,Austin Cross-Dock,DISTRIBUTION_CENTER,Austin,TX,30.2672,-97.7431,7,19
-SAT,San Antonio Customer Site,CUSTOMER_SITE,San Antonio,TX,29.4241,-98.4936,8,17
-FTW,Fort Worth Distribution Hub,DISTRIBUTION_CENTER,Fort Worth,TX,32.7555,-97.3308,6,21
+SYD,Sydney Distribution Centre (Eastern Creek),DISTRIBUTION_CENTER,Sydney,NSW,-33.8018,150.8538,6,20
+NTL,Newcastle Port Warehouse (Beresfield),WAREHOUSE,Newcastle,NSW,-32.7992,151.6489,6,22
+CBR,Canberra Cross-Dock (Hume),DISTRIBUTION_CENTER,Canberra,ACT,-35.3876,149.1625,7,19
+WOL,Wollongong Customer Site (Unanderra),CUSTOMER_SITE,Wollongong,NSW,-34.4535,150.8424,8,17
+GLB,Goulburn Regional Hub,DISTRIBUTION_CENTER,Goulburn,NSW,-34.7546,149.7186,6,21

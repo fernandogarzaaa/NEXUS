@@ -1,4 +1,5 @@
 import { getState, nextId, nowIso } from "../domain/store";
+import { formatLocal } from "../domain/locale";
 import type { ExceptionSeverity, ExceptionType, OperationalException, Shipment } from "../domain/types";
 import { calculateETA } from "./tools";
 import { runExceptionRecoveryAgent } from "./orchestrator";
@@ -47,7 +48,7 @@ export async function detectDelayException(
     severity,
     description:
       descriptionOverride ??
-      `${type === "DRIVER_DELAYED" ? "Driver delayed" : type.replace(/_/g, " ")} by ${delayMin} min — revised ETA ${eta.newEta} ${
+      `${type === "DRIVER_DELAYED" ? "Driver delayed" : type.replace(/_/g, " ")} by ${delayMin} min — revised ETA ${formatLocal(eta.newEta)} ${
         eta.violatesWindow ? `misses the delivery window by ${eta.minutesLate} min` : "still within window"
       }.`,
     etaImpactMin: delayMin,

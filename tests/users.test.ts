@@ -144,7 +144,7 @@ describe("users mode end to end", () => {
 
     await signIn("amir");
     await updatePolicyAction("APPOINTMENT_RESCHEDULE", "RECOMMEND", 50);
-    expect(getState().policies.get("APPOINTMENT_RESCHEDULE")).toMatchObject({ autonomyLevel: "RECOMMEND", maxCostUsd: 50 });
+    expect(getState().policies.get("APPOINTMENT_RESCHEDULE")).toMatchObject({ autonomyLevel: "RECOMMEND", maxCost: 50 });
     expect(getState().auditLog.at(-1)).toMatchObject({ action: "UPDATE_POLICY", actorId: "Amir Admin (amir)" });
     await resetDemoAction();
     expect(getState().auditLog).toEqual([expect.objectContaining({ action: "RESET_STATE", actorId: "Amir Admin (amir)" })]);

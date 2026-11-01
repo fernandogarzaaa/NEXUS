@@ -1,5 +1,6 @@
 import { SeededRandom } from "../domain/rng";
 import { getState, nextId, nowIso } from "../domain/store";
+import { localHour } from "../domain/locale";
 import type { SimulationEvent, SimulationEventType } from "../domain/types";
 import { detectDelayException } from "../agents/exceptionRecoveryAgent";
 
@@ -114,7 +115,7 @@ export async function simulateAppointmentUnavailable(shipmentId: string) {
   const shipment = state.shipments.get(shipmentId);
   if (!shipment || !shipment.appointment) throw new Error(`Shipment ${shipmentId} has no appointment`);
   const facility = state.facilities.get(shipment.appointment.facilityId);
-  const hour = new Date(shipment.appointment.start).getUTCHours();
+  const hour = localHour(shipment.appointment.start);
   const slot = facility?.appointmentCapacity.find((c) => c.hour === hour);
   if (slot) slot.booked = slot.capacity; // saturate the original slot
   const delayMin = 45;

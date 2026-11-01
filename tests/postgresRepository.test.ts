@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
+import fs from "node:fs";
+import path from "node:path";
 import { runMigrations } from "@/lib/db/migrate";
 import { seedDatabase } from "@/lib/db/seed";
 import { PostgresStateRepository } from "@/lib/domain/postgresRepository";
@@ -33,7 +35,43 @@ describe.skipIf(!url)("PostgresStateRepository (integration)", () => {
   it("applies migrations once and skips them on re-run", async () => {
     const again = await runMigrations(pool);
     expect(again.applied).toEqual([]);
-    expect(again.skipped).toContain("0001_init.sql");
+    expect(again.skipped).toEqual(["0001_init.sql", "0002_metric_units_neutral_currency.sql"]);
+  });
+
+  it("0002 converts legacy imperial / USD-named records in place and is idempotent", async () => {
+    const legacy = {
+      shipment: { id: "SHP-LEGACY", weightLbs: 2205, distanceMiles: 100, status: "SCHEDULED" },
+      route: { id: "RTE-LEGACY", distanceMiles: 62.1 },
+      vehicle: { id: "VEH-LEGACY", capacityLbs: 10000 },
+      policy: { id: "POL-LEGACY", actionType: "LEGACY_ACTION", maxCostUsd: null },
+      approval: { id: "APR-LEGACY", estimatedCostUsd: 180 },
+      run: { id: "RUN-LEGACY", plan: { options: [{ id: "OPT-1", estimatedCostUsd: 25 }, { id: "OPT-2", estimatedCostUsd: 650 }] } },
+    };
+    await pool.query("INSERT INTO shipments (id, data) VALUES ($1, $2)", [legacy.shipment.id, legacy.shipment]);
+    await pool.query("INSERT INTO routes (id, data) VALUES ($1, $2)", [legacy.route.id, legacy.route]);
+    await pool.query("INSERT INTO vehicles (id, data) VALUES ($1, $2)", [legacy.vehicle.id, legacy.vehicle]);
+    await pool.query("INSERT INTO policies (action_type, data) VALUES ($1, $2)", [legacy.policy.actionType, legacy.policy]);
+    await pool.query("INSERT INTO approvals (id, data) VALUES ($1, $2)", [legacy.approval.id, legacy.approval]);
+    await pool.query("INSERT INTO agent_runs (id, data) VALUES ($1, $2)", [legacy.run.id, legacy.run]);
+
+    const sql = fs.readFileSync(path.join(process.cwd(), "db", "migrations", "0002_metric_units_neutral_currency.sql"), "utf8");
+    await pool.query(sql);
+    await pool.query(sql); // idempotent
+
+    const one = async (table: string, key: string, id: string) =>
+      (await pool.query<{ data: Record<string, unknown> }>(`SELECT data FROM ${table} WHERE ${key} = $1`, [id])).rows[0].data;
+    expect(await one("shipments", "id", "SHP-LEGACY")).toEqual({ id: "SHP-LEGACY", status: "SCHEDULED", weightKg: 1000.2, distanceKm: 160.9 });
+    expect(await one("routes", "id", "RTE-LEGACY")).toEqual({ id: "RTE-LEGACY", distanceKm: 99.9 });
+    expect(await one("vehicles", "id", "VEH-LEGACY")).toEqual({ id: "VEH-LEGACY", capacityKg: 4535.9 });
+    expect(await one("policies", "action_type", "LEGACY_ACTION")).toEqual({ id: "POL-LEGACY", actionType: "LEGACY_ACTION", maxCost: null });
+    expect(await one("approvals", "id", "APR-LEGACY")).toEqual({ id: "APR-LEGACY", estimatedCost: 180 });
+    expect(await one("agent_runs", "id", "RUN-LEGACY")).toEqual({
+      id: "RUN-LEGACY",
+      plan: { options: [{ id: "OPT-1", estimatedCost: 25 }, { id: "OPT-2", estimatedCost: 650 }] },
+    });
+    for (const [table, key] of [["shipments", "id"], ["routes", "id"], ["vehicles", "id"], ["policies", "action_type"], ["approvals", "id"], ["agent_runs", "id"]]) {
+      await pool.query(`DELETE FROM ${table} WHERE ${key} LIKE '%LEGACY%'`);
+    }
   });
 
   it("seeds the demo set into an empty database on first load", async () => {

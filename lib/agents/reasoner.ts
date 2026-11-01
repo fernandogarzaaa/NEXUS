@@ -1,4 +1,5 @@
 import { nextId } from "../domain/store";
+import { localHour } from "../domain/locale";
 import type { OperationalException, RecoveryOption, RecoveryPlan, Shipment } from "../domain/types";
 import { calculateETA, calculateRoute, findAlternativeDriver, getFacility } from "./tools";
 import { narrateRecoveryPlan } from "./llm";
@@ -22,7 +23,7 @@ function scoreOption(opt: Omit<RecoveryOption, "score">, etaImpactMin: number): 
   // See docs/architecture/agent-design.md "Why NOTIFY_ONLY can't win by
   // default" for the reasoning behind these weights.
   const recoveryRatio = etaImpactMin > 0 ? Math.min(opt.etaImprovementMin / etaImpactMin, 1) : 1;
-  const costTerm = 1 - Math.min(opt.estimatedCostUsd, 800) / 800; // 0..1
+  const costTerm = 1 - Math.min(opt.estimatedCost, 800) / 800; // 0..1
   return recoveryRatio * 0.55 + opt.feasibility * 0.2 + costTerm * 0.15 + (1 - opt.riskScore) * 0.1;
 }
 
@@ -40,9 +41,7 @@ export async function evaluateRecoveryOptions(
   // Option 1: reschedule the destination appointment to absorb the delay.
   if (shipment.appointment) {
     const facility = getFacility(shipment.appointment.facilityId);
-    const hourOfDelay = new Date(
-      new Date(shipment.appointment.start).getTime() + etaImpactMin * 60_000
-    ).getUTCHours();
+    const hourOfDelay = localHour(new Date(shipment.appointment.start).getTime() + etaImpactMin * 60_000);
     const slot = facility.appointmentCapacity.find((c) => c.hour === hourOfDelay);
     const hasCapacity = !slot || slot.booked < slot.capacity;
     options.push(
@@ -50,7 +49,7 @@ export async function evaluateRecoveryOptions(
         id: nextId("OPT"),
         type: "RESCHEDULE_APPOINTMENT",
         description: `Move the ${facility.name} appointment later by ${etaImpactMin} min to match the revised ETA.`,
-        estimatedCostUsd: 25,
+        estimatedCost: 25,
         etaImprovementMin: etaImpactMin,
         feasibility: hasCapacity ? 0.95 : 0.35,
         riskScore: 0.1,
@@ -68,7 +67,7 @@ export async function evaluateRecoveryOptions(
         description: `Reassign to ${altDriver.name} (available, ${altDriver.hoursOfServiceRemaining.toFixed(
           1
         )}h HOS remaining, ${(altDriver.onTimeRating * 100).toFixed(0)}% on-time rating).`,
-        estimatedCostUsd: 180,
+        estimatedCost: 180,
         etaImprovementMin: Math.round(etaImpactMin * 0.85),
         feasibility: 0.8,
         riskScore: 0.35,
@@ -85,7 +84,7 @@ export async function evaluateRecoveryOptions(
       description: `Recompute routing for ${shipment.id} to offset traffic factor ${route.trafficFactor.toFixed(
         2
       )}x and recover transit time.`,
-      estimatedCostUsd: 10,
+      estimatedCost: 10,
       etaImprovementMin: Math.round(etaImpactMin * 0.35),
       feasibility: 0.7,
       riskScore: 0.15,
@@ -98,7 +97,7 @@ export async function evaluateRecoveryOptions(
       id: nextId("OPT"),
       type: "CARRIER_REBOOK",
       description: `Book an expedited outside carrier to guarantee the delivery window.`,
-      estimatedCostUsd: 650,
+      estimatedCost: 650,
       etaImprovementMin: etaImpactMin,
       feasibility: 0.9,
       riskScore: 0.2,
@@ -111,7 +110,7 @@ export async function evaluateRecoveryOptions(
       id: nextId("OPT"),
       type: "NOTIFY_ONLY",
       description: `Notify the customer of the revised ETA without changing operations.`,
-      estimatedCostUsd: 0,
+      estimatedCost: 0,
       etaImprovementMin: 0,
       feasibility: 1,
       riskScore: 0.05,
