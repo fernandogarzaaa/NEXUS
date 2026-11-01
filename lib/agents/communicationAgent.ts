@@ -1,6 +1,7 @@
 import { getState, nextId, nowIso } from "../domain/store";
 import type { AgentPhase, AgentRun, AgentStep, OperationalException, Shipment } from "../domain/types";
 import { sendNotification } from "./tools";
+import { formatLocal } from "../domain/locale";
 
 // ---------------------------------------------------------------------------
 // Communication & Coordination Agent — owns every outbound message the
@@ -29,14 +30,14 @@ export function coordinateFacilityReschedule(run: AgentRun, shipment: Shipment, 
     run.id,
     "EXECUTE",
     "[Communication Agent] Facility contacted",
-    `Requested new dock appointment at ${facilityId} for ${new Date(proposedStart).toUTCString()}.`
+    `Requested new dock appointment at ${facilityId} for ${formatLocal(proposedStart)}.`
   );
   sendNotification({
     shipmentId: shipment.id,
     channel: "FACILITY",
     recipient: facilityId,
     subject: `Appointment change request for ${shipment.referenceCode}`,
-    body: `Requesting to move the dock appointment for ${shipment.referenceCode} to ${new Date(proposedStart).toUTCString()} due to an in-transit delay.`,
+    body: `Requesting to move the dock appointment for ${shipment.referenceCode} to ${formatLocal(proposedStart)} due to an in-transit delay.`,
     agentRunId: run.id,
   });
   // Deterministic in the POC: facility coordination always confirms once
@@ -52,7 +53,7 @@ export function coordinateFacilityReschedule(run: AgentRun, shipment: Shipment, 
 }
 
 export function notifyCustomerOfUpdate(run: AgentRun, shipment: Shipment, exception: OperationalException) {
-  const etaLocal = new Date(shipment.currentEta).toUTCString();
+  const etaLocal = formatLocal(shipment.currentEta);
   addStep(run.id, "NOTIFY", "[Communication Agent] Customer notified", `Sent revised ETA (${etaLocal}) to ${shipment.customerName}.`);
   return sendNotification({
     shipmentId: shipment.id,

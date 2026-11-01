@@ -20,7 +20,7 @@ import { askKnowledge } from "../knowledge/service";
 //   change or decide an approval.
 // ---------------------------------------------------------------------------
 
-export const MCP_SERVER_INFO = { name: "nexus", version: "0.3.0" };
+export const MCP_SERVER_INFO = { name: "nexus", version: "0.4.0" };
 
 interface ToolSpec {
   name: string;

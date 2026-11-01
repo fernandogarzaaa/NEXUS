@@ -1,5 +1,6 @@
 import { getState } from "../domain/store";
 import type { AutonomyLevel, Policy } from "../domain/types";
+import { formatMoney } from "../domain/locale";
 
 export const AUTONOMY_LEVELS: readonly AutonomyLevel[] = [
   "OBSERVE",
@@ -18,12 +19,12 @@ export interface PolicyDecision {
 
 /**
  * Evaluate the configured autonomy policy for an action type against its
- * estimated cost. A policy with a maxCostUsd threshold escalates to
+ * estimated cost. A policy with a maxCost threshold escalates to
  * approval when the estimate exceeds it, even if its base level is
  * autonomous — this is what implements rules like "appointment
  * rescheduling under $100 -> autonomous".
  */
-export function evaluatePolicy(actionType: string, estimatedCostUsd: number): PolicyDecision {
+export function evaluatePolicy(actionType: string, estimatedCost: number): PolicyDecision {
   const policy = getState().policies.get(actionType);
   if (!policy) {
     return {
@@ -33,7 +34,7 @@ export function evaluatePolicy(actionType: string, estimatedCostUsd: number): Po
         label: actionType,
         description: "No policy configured for this action type; defaulting to human approval.",
         autonomyLevel: "HIGH_IMPACT_APPROVAL",
-        maxCostUsd: null,
+        maxCost: null,
         editable: false,
       },
       effectiveLevel: "HIGH_IMPACT_APPROVAL",
@@ -60,14 +61,12 @@ export function evaluatePolicy(actionType: string, estimatedCostUsd: number): Po
     };
   }
 
-  if (policy.maxCostUsd !== null && estimatedCostUsd > policy.maxCostUsd) {
+  if (policy.maxCost !== null && estimatedCost > policy.maxCost) {
     return {
       policy,
       effectiveLevel: "HIGH_IMPACT_APPROVAL",
       requiresApproval: true,
-      reason: `Estimated cost $${estimatedCostUsd.toFixed(2)} exceeds the $${policy.maxCostUsd.toFixed(
-        2
-      )} autonomous threshold for "${policy.label}"; escalating to approval.`,
+      reason: `Estimated cost ${formatMoney(estimatedCost)} exceeds the ${formatMoney(policy.maxCost)} autonomous threshold for "${policy.label}"; escalating to approval.`,
     };
   }
 
@@ -84,9 +83,9 @@ export function evaluatePolicy(actionType: string, estimatedCostUsd: number): Po
     policy,
     effectiveLevel: policy.autonomyLevel,
     requiresApproval: false,
-    reason: `Policy "${policy.label}" permits autonomous execution (estimated cost $${estimatedCostUsd.toFixed(
-      2
-    )}${policy.maxCostUsd !== null ? ` <= $${policy.maxCostUsd.toFixed(2)} threshold` : ""}).`,
+    reason: `Policy "${policy.label}" permits autonomous execution (estimated cost ${formatMoney(estimatedCost)}${
+      policy.maxCost !== null ? ` <= ${formatMoney(policy.maxCost)} threshold` : ""
+    }).`,
   };
 }
 
@@ -96,7 +95,7 @@ export function listPolicies(): Policy[] {
 
 export function updatePolicy(
   actionType: string,
-  updates: Partial<Pick<Policy, "autonomyLevel" | "maxCostUsd">>
+  updates: Partial<Pick<Policy, "autonomyLevel" | "maxCost">>
 ): Policy {
   const state = getState();
   const policy = state.policies.get(actionType);
@@ -109,11 +108,11 @@ export function updatePolicy(
     throw new Error(`Invalid autonomy level: ${String(updates.autonomyLevel)}`);
   }
   if (
-    updates.maxCostUsd !== undefined &&
-    updates.maxCostUsd !== null &&
-    (typeof updates.maxCostUsd !== "number" || !Number.isFinite(updates.maxCostUsd) || updates.maxCostUsd < 0)
+    updates.maxCost !== undefined &&
+    updates.maxCost !== null &&
+    (typeof updates.maxCost !== "number" || !Number.isFinite(updates.maxCost) || updates.maxCost < 0)
   ) {
-    throw new Error("maxCostUsd must be null or a finite, non-negative number");
+    throw new Error("maxCost must be null or a finite, non-negative number");
   }
   const updated: Policy = { ...policy, ...updates };
   state.policies.set(actionType, updated);

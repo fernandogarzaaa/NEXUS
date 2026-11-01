@@ -96,12 +96,12 @@ describe("knowledge retrieval", () => {
 
   it("detects an edited ops-doc section as stale", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nexus-ops-"));
-    fs.writeFileSync(path.join(dir, "dock.md"), "# Dock hours\nThe Austin dock opens at 07:00.\n");
+    fs.writeFileSync(path.join(dir, "dock.md"), "# Dock hours\nThe Canberra dock opens at 07:00.\n");
     const state = getState();
     const index = buildKnowledgeIndex(state, dir);
-    expect(ask(index, state, "When does the Austin dock open?", { sourceTypes: ["opsDoc"] }).status).toBe("ANSWERED");
-    fs.writeFileSync(path.join(dir, "dock.md"), "# Dock hours\nThe Austin dock opens at 05:00.\n");
-    const res = ask(index, state, "When does the Austin dock open?", { sourceTypes: ["opsDoc"] });
+    expect(ask(index, state, "When does the Canberra dock open?", { sourceTypes: ["opsDoc"] }).status).toBe("ANSWERED");
+    fs.writeFileSync(path.join(dir, "dock.md"), "# Dock hours\nThe Canberra dock opens at 05:00.\n");
+    const res = ask(index, state, "When does the Canberra dock open?", { sourceTypes: ["opsDoc"] });
     expect(res.status).toBe("NOT_FOUND");
     fs.rmSync(dir, { recursive: true, force: true });
   });

@@ -1,6 +1,6 @@
 {
   "name": "nexus-logistics",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,7 +13,8 @@
     "db:seed": "tsx scripts/db-seed.ts",
     "reconcile": "tsx scripts/reconcile.ts",
     "migrate:dry-run": "tsx scripts/migrate-dry-run.ts",
-    "user:hash": "tsx scripts/hash-password.ts"
+    "user:hash": "tsx scripts/hash-password.ts",
+    "fixtures:generic": "tsx scripts/generate-generic-fixtures.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

@@ -40,7 +40,7 @@ describe("policy engine", () => {
   });
 
   it("lets an operator tighten a policy at runtime and immediately reflects it", () => {
-    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "HIGH_IMPACT_APPROVAL", maxCostUsd: null });
+    updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "HIGH_IMPACT_APPROVAL", maxCost: null });
     const decision = evaluatePolicy("APPOINTMENT_RESCHEDULE", 1);
     expect(decision.requiresApproval).toBe(true);
     expect(listPolicies().find((p) => p.actionType === "APPOINTMENT_RESCHEDULE")?.autonomyLevel).toBe(
@@ -54,11 +54,11 @@ describe("policy engine", () => {
 
   it("rejects invalid thresholds and levels instead of silently disabling escalation", () => {
     for (const bad of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
-      expect(() => updatePolicy("APPOINTMENT_RESCHEDULE", { maxCostUsd: bad })).toThrow(/maxCostUsd/);
+      expect(() => updatePolicy("APPOINTMENT_RESCHEDULE", { maxCost: bad })).toThrow(/maxCost/);
     }
     expect(() =>
       updatePolicy("APPOINTMENT_RESCHEDULE", { autonomyLevel: "GOD_MODE" as unknown as "OBSERVE" })
     ).toThrow(/Invalid autonomy level/);
-    expect(updatePolicy("APPOINTMENT_RESCHEDULE", { maxCostUsd: 0 }).maxCostUsd).toBe(0);
+    expect(updatePolicy("APPOINTMENT_RESCHEDULE", { maxCost: 0 }).maxCost).toBe(0);
   });
 });

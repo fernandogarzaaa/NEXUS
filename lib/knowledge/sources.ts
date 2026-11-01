@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { NexusState } from "../domain/state";
+import { currencyCode, operatingTimezone } from "../domain/locale";
 
 // ---------------------------------------------------------------------------
 // Knowledge sources: canonical records rendered as plain text, and supplied
@@ -64,7 +65,7 @@ const RENDERERS: Record<Exclude<KnowledgeSourceType, "opsDoc">, {
         title: `Shipment ${x.id} (${x.referenceCode})`,
         text:
           `Shipment ${x.id}, reference ${x.referenceCode}, for customer ${x.customerName}. Status ${x.status}, priority ${x.priority}. ` +
-          `From ${nameOf(s.facilities, x.originFacilityId)} to ${nameOf(s.facilities, x.destinationFacilityId)}, ${x.distanceMiles} miles, ${x.weightLbs} lbs. ` +
+          `From ${nameOf(s.facilities, x.originFacilityId)} to ${nameOf(s.facilities, x.destinationFacilityId)}, ${x.distanceKm} km, ${x.weightKg} kg. ` +
           `Driver ${nameOf(s.drivers, x.driverId)}, vehicle ${x.vehicleId ?? "unassigned"}. ` +
           `Delivery window ${x.deliveryWindowStart} to ${x.deliveryWindowEnd}. Scheduled ETA ${x.scheduledEta}, current ETA ${x.currentEta}. ${appt}`,
         asOf: x.updatedAt,
@@ -95,7 +96,7 @@ const RENDERERS: Record<Exclude<KnowledgeSourceType, "opsDoc">, {
       if (!v) return null;
       return {
         title: `Vehicle ${v.id}`,
-        text: `Vehicle ${v.id}, type ${v.type}, capacity ${v.capacityLbs} lbs, status ${v.status}, current driver ${nameOf(s.drivers, v.currentDriverId)}.`,
+        text: `Vehicle ${v.id}, type ${v.type}, capacity ${v.capacityKg} kg, status ${v.status}, current driver ${nameOf(s.drivers, v.currentDriverId)}.`,
         asOf: snapshotAt,
         asOfBasis: "snapshot",
       };
@@ -110,7 +111,7 @@ const RENDERERS: Record<Exclude<KnowledgeSourceType, "opsDoc">, {
         title: `Facility ${f.id} (${f.name})`,
         text:
           `Facility ${f.id} ${f.name}, a ${f.type.replace(/_/g, " ").toLowerCase()} in ${f.city}, ${f.state}. ` +
-          `Operating hours ${f.operatingHoursStart}:00 to ${f.operatingHoursEnd}:00 UTC.`,
+          `Operating hours ${f.operatingHoursStart}:00 to ${f.operatingHoursEnd}:00 local time (${operatingTimezone()}).`,
         asOf: snapshotAt,
         asOfBasis: "snapshot",
       };
@@ -142,7 +143,7 @@ const RENDERERS: Record<Exclude<KnowledgeSourceType, "opsDoc">, {
         title: `Approval ${a.id} (${a.status})`,
         text:
           `Approval ${a.id} for ${a.actionType.replace(/_/g, " ").toLowerCase()} on shipment ${a.shipmentId}, status ${a.status}. ${a.summary}. ` +
-          `What will happen: ${a.whatWillHappen} Why: ${a.why} Estimated cost ${a.estimatedCostUsd} USD.` +
+          `What will happen: ${a.whatWillHappen} Why: ${a.why} Estimated cost ${a.estimatedCost} ${currencyCode()}.` +
           (a.resolvedBy ? ` Decided by ${a.resolvedBy} at ${a.resolvedAt}.` : " Awaiting a human decision."),
         asOf: a.resolvedAt ?? a.createdAt,
         asOfBasis: "record",
@@ -174,7 +175,7 @@ const RENDERERS: Record<Exclude<KnowledgeSourceType, "opsDoc">, {
         title: `Policy ${p.label}`,
         text:
           `Policy ${p.id} for ${p.actionType.replace(/_/g, " ").toLowerCase()} (${p.label}): autonomy level ${p.autonomyLevel}, ` +
-          `${p.maxCostUsd === null ? "no cost threshold" : `cost threshold ${p.maxCostUsd} USD`}. ${p.description}`,
+          `${p.maxCost === null ? "no cost threshold" : `cost threshold ${p.maxCost} ${currencyCode()}`}. ${p.description}`,
         asOf: snapshotAt,
         asOfBasis: "snapshot",
       };

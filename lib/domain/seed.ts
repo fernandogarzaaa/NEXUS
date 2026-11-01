@@ -1,4 +1,5 @@
 import { SeededRandom } from "./rng";
+import { PLANNING_SPEED_KMH, haversineKm } from "./locale";
 import type {
   Driver,
   Facility,
@@ -11,61 +12,65 @@ import type {
 
 // Fixed anchor so every seeded run produces identical timestamps —
 // required for the hero demo script and for deterministic tests.
-export const DEMO_EPOCH_MS = Date.UTC(2026, 7, 17, 8, 0, 0); // Mon 2026-08-17 08:00 UTC
+// Mon 2026-08-17 08:00 in Sydney (AEST, UTC+10; no daylight saving in August).
+export const DEMO_EPOCH_MS = Date.UTC(2026, 7, 16, 22, 0, 0);
 export const DEMO_SEED = 20260817;
 
 function iso(offsetMin: number): string {
   return new Date(DEMO_EPOCH_MS + offsetMin * 60_000).toISOString();
 }
 
+// A regional New South Wales / ACT network for the demo. Facility names are
+// fictional; coordinates are the real suburbs so distances are realistic.
+// Operating hours are local (see lib/domain/locale.ts).
 const FACILITY_SEED: Array<Omit<Facility, "appointmentCapacity">> = [
   {
-    id: "FAC-DAL",
-    name: "Dallas Regional DC",
+    id: "FAC-SYD",
+    name: "Sydney Distribution Centre (Eastern Creek)",
     type: "DISTRIBUTION_CENTER",
-    city: "Dallas",
-    state: "TX",
-    location: { lat: 32.7767, lng: -96.797 },
+    city: "Sydney",
+    state: "NSW",
+    location: { lat: -33.8018, lng: 150.8538 },
     operatingHoursStart: 6,
     operatingHoursEnd: 20,
   },
   {
-    id: "FAC-HOU",
-    name: "Houston Gulf Warehouse",
+    id: "FAC-NTL",
+    name: "Newcastle Port Warehouse (Beresfield)",
     type: "WAREHOUSE",
-    city: "Houston",
-    state: "TX",
-    location: { lat: 29.7604, lng: -95.3698 },
+    city: "Newcastle",
+    state: "NSW",
+    location: { lat: -32.7992, lng: 151.6489 },
     operatingHoursStart: 6,
     operatingHoursEnd: 22,
   },
   {
-    id: "FAC-AUS",
-    name: "Austin Cross-Dock",
+    id: "FAC-CBR",
+    name: "Canberra Cross-Dock (Hume)",
     type: "DISTRIBUTION_CENTER",
-    city: "Austin",
-    state: "TX",
-    location: { lat: 30.2672, lng: -97.7431 },
+    city: "Canberra",
+    state: "ACT",
+    location: { lat: -35.3876, lng: 149.1625 },
     operatingHoursStart: 7,
     operatingHoursEnd: 19,
   },
   {
-    id: "FAC-SAT",
-    name: "San Antonio Customer Site",
+    id: "FAC-WOL",
+    name: "Wollongong Customer Site (Unanderra)",
     type: "CUSTOMER_SITE",
-    city: "San Antonio",
-    state: "TX",
-    location: { lat: 29.4241, lng: -98.4936 },
+    city: "Wollongong",
+    state: "NSW",
+    location: { lat: -34.4535, lng: 150.8424 },
     operatingHoursStart: 8,
     operatingHoursEnd: 17,
   },
   {
-    id: "FAC-FTW",
-    name: "Fort Worth Distribution Hub",
+    id: "FAC-GLB",
+    name: "Goulburn Regional Hub",
     type: "DISTRIBUTION_CENTER",
-    city: "Fort Worth",
-    state: "TX",
-    location: { lat: 32.7555, lng: -97.3308 },
+    city: "Goulburn",
+    state: "NSW",
+    location: { lat: -34.7546, lng: 149.7186 },
     operatingHoursStart: 6,
     operatingHoursEnd: 21,
   },
@@ -85,16 +90,16 @@ const DRIVER_NAMES = [
 ];
 
 const CUSTOMER_NAMES = [
-  "Lonestar Retail Group",
-  "Alamo Foods Co-op",
-  "Gulf Coast Manufacturing",
-  "Hill Country Hardware",
-  "Metroplex Electronics",
-  "Bayou Fresh Produce",
-  "Rio Grande Textiles",
-  "Longhorn Auto Parts",
-  "Piney Woods Lumber",
-  "Cactus Rose Pharmacy",
+  "Harbour City Retail Group",
+  "Hunter Valley Foods Co-op",
+  "Illawarra Fabrication",
+  "Southern Highlands Hardware",
+  "Parramatta Electronics",
+  "Riverina Fresh Produce",
+  "Monaro Textiles",
+  "Western Sydney Auto Parts",
+  "Blue Mountains Timber",
+  "Waratah Pharmacy",
 ];
 
 const VEHICLE_TYPES: VehicleType[] = ["DRY_VAN", "REEFER", "FLATBED", "BOX_TRUCK"];
@@ -114,7 +119,7 @@ function buildVehicles(rand: SeededRandom, count: number): Vehicle[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `VEH-${String(i + 1).padStart(2, "0")}`,
     type: rand.pick(VEHICLE_TYPES),
-    capacityLbs: rand.int(8000, 45000),
+    capacityKg: rand.int(3600, 20400),
     status: "AVAILABLE" as const,
     currentDriverId: null,
   }));
@@ -149,11 +154,8 @@ function buildDrivers(rand: SeededRandom, facilities: Facility[], vehicles: Vehi
   });
 }
 
-function distanceMiles(a: Facility["location"], b: Facility["location"]): number {
-  // Rough flat-earth approximation; adequate for demo-scale distances in TX.
-  const dLat = (a.lat - b.lat) * 69;
-  const dLng = (a.lng - b.lng) * 54.6;
-  return Math.round(Math.sqrt(dLat * dLat + dLng * dLng) * 10) / 10;
+function transitMinutes(distanceKm: number): number {
+  return Math.round((distanceKm / PLANNING_SPEED_KMH) * 60);
 }
 
 export interface SeedData {
@@ -191,8 +193,8 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
     const driver = assignableDrivers[i % assignableDrivers.length];
     const vehicle = vehicles.find((v) => v.id === driver.vehicleId) ?? rand.pick(vehicles);
     const priority = rand.weightedPick(priorityWeights);
-    const dist = Math.max(18, distanceMiles(origin.location, destination.location));
-    const baseDurationMin = Math.round((dist / 52) * 60);
+    const dist = Math.max(30, haversineKm(origin.location, destination.location));
+    const baseDurationMin = transitMinutes(dist);
 
     // Stagger departures across a 24h operational window.
     const departureOffset = rand.int(-180, 420);
@@ -213,8 +215,8 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
       routeId: `RTE-${id}`,
       status,
       priority,
-      weightLbs: rand.int(1200, Math.min(vehicle.capacityLbs, 42000)),
-      distanceMiles: dist,
+      weightKg: rand.int(550, Math.min(vehicle.capacityKg, 19000)),
+      distanceKm: dist,
       deliveryWindowStart: iso(scheduledEtaOffset - windowSlack / 2),
       deliveryWindowEnd: iso(scheduledEtaOffset + windowSlack),
       scheduledEta: iso(scheduledEtaOffset),
@@ -240,7 +242,7 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
       shipmentId: shipment.id,
       originFacilityId: origin.id,
       destinationFacilityId: destination.id,
-      distanceMiles: dist,
+      distanceKm: dist,
       baseDurationMin,
       trafficFactor: rand.float(0.95, 1.15, 2),
       waypoints: [
@@ -256,10 +258,10 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
   // delayed by 45 min" always produces a genuine, reproducible
   // delivery-window violation with a feasible appointment reschedule.
   const heroDriver = drivers.find((d) => d.id === "D-07")!;
-  const heroOrigin = facilities.find((f) => f.id === "FAC-DAL")!;
-  const heroDestination = facilities.find((f) => f.id === "FAC-AUS")!;
-  const heroDist = distanceMiles(heroOrigin.location, heroDestination.location);
-  const heroBaseDurationMin = Math.round((heroDist / 52) * 60);
+  const heroOrigin = facilities.find((f) => f.id === "FAC-SYD")!;
+  const heroDestination = facilities.find((f) => f.id === "FAC-CBR")!;
+  const heroDist = haversineKm(heroOrigin.location, heroDestination.location);
+  const heroBaseDurationMin = transitMinutes(heroDist);
   const heroDepartureOffset = -40; // already in transit at demo start
   const heroScheduledEtaOffset = heroDepartureOffset + heroBaseDurationMin;
   const heroVehicle = vehicles.find((v) => v.id === heroDriver.vehicleId)!;
@@ -267,7 +269,7 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
   const heroShipment: Shipment = {
     id: "SHP-2000",
     referenceCode: `NX-${seed % 1000}-HERO`,
-    customerName: "Metroplex Electronics",
+    customerName: "Parramatta Electronics",
     originFacilityId: heroOrigin.id,
     destinationFacilityId: heroDestination.id,
     driverId: heroDriver.id,
@@ -275,8 +277,8 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
     routeId: "RTE-SHP-2000",
     status: "IN_TRANSIT",
     priority: "CRITICAL",
-    weightLbs: 8200,
-    distanceMiles: heroDist,
+    weightKg: 3700,
+    distanceKm: heroDist,
     deliveryWindowStart: iso(heroScheduledEtaOffset - 15),
     deliveryWindowEnd: iso(heroScheduledEtaOffset + 20),
     scheduledEta: iso(heroScheduledEtaOffset),
@@ -297,7 +299,7 @@ export function generateSeedData(seed: number = DEMO_SEED, shipmentCount = 62): 
     shipmentId: heroShipment.id,
     originFacilityId: heroOrigin.id,
     destinationFacilityId: heroDestination.id,
-    distanceMiles: heroDist,
+    distanceKm: heroDist,
     baseDurationMin: heroBaseDurationMin,
     trafficFactor: 1.05,
     waypoints: [

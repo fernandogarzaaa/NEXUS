@@ -38,8 +38,8 @@ export interface Shipment {
   routeId: string | null;
   status: ShipmentStatus;
   priority: ShipmentPriority;
-  weightLbs: number;
-  distanceMiles: number;
+  weightKg: number;
+  distanceKm: number;
   deliveryWindowStart: ISODateString;
   deliveryWindowEnd: ISODateString;
   scheduledEta: ISODateString;
@@ -69,7 +69,7 @@ export type VehicleStatus = "AVAILABLE" | "IN_USE" | "MAINTENANCE";
 export interface Vehicle {
   id: string;
   type: VehicleType;
-  capacityLbs: number;
+  capacityKg: number;
   status: VehicleStatus;
   currentDriverId: string | null;
 }
@@ -103,7 +103,7 @@ export interface Route {
   shipmentId: string;
   originFacilityId: string;
   destinationFacilityId: string;
-  distanceMiles: number;
+  distanceKm: number;
   baseDurationMin: number;
   trafficFactor: number; // multiplier, 1.0 = normal
   waypoints: RouteWaypoint[];
@@ -186,7 +186,7 @@ export interface RecoveryOption {
   id: string;
   type: RecoveryOptionType;
   description: string;
-  estimatedCostUsd: number;
+  estimatedCost: number;
   etaImprovementMin: number;
   feasibility: number; // 0-1
   riskScore: number; // 0-1, lower is safer
@@ -216,7 +216,7 @@ export interface Policy {
   label: string;
   description: string;
   autonomyLevel: AutonomyLevel;
-  maxCostUsd: number | null;
+  maxCost: number | null;
   editable: boolean;
 }
 
@@ -272,7 +272,7 @@ export interface Approval {
   whatWillHappen: string;
   why: string;
   expectedImpact: string;
-  estimatedCostUsd: number;
+  estimatedCost: number;
   slaImpactMin: number;
   confidence: number;
   contextNotes: string[];

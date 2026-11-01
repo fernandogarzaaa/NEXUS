@@ -24,8 +24,8 @@ export const shipmentSchema = z.object({
   routeId: z.string().min(1).nullable(),
   status: z.enum(["SCHEDULED", "IN_TRANSIT", "AT_FACILITY", "EXCEPTION", "DELIVERED", "CANCELLED"]),
   priority: z.enum(["STANDARD", "HIGH", "CRITICAL"]),
-  weightLbs: z.number().nonnegative(),
-  distanceMiles: z.number().nonnegative(),
+  weightKg: z.number().nonnegative(),
+  distanceKm: z.number().nonnegative(),
   deliveryWindowStart: isoDate,
   deliveryWindowEnd: isoDate,
   scheduledEta: isoDate,
@@ -57,7 +57,7 @@ export const driverSchema = z.object({
 export const vehicleSchema = z.object({
   id: z.string().min(1),
   type: z.enum(["DRY_VAN", "REEFER", "FLATBED", "BOX_TRUCK"]),
-  capacityLbs: z.number().nonnegative(),
+  capacityKg: z.number().nonnegative(),
   status: z.enum(["AVAILABLE", "IN_USE", "MAINTENANCE"]),
   currentDriverId: z.string().min(1).nullable(),
 }) satisfies z.ZodType<Vehicle>;

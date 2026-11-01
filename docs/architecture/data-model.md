@@ -67,6 +67,16 @@ canonical plain-JSON projection of the working set; every backend and the
 repository tests use them, so a snapshot that round-trips there round-trips
 anywhere.
 
+## Units, currency and time
+
+Quantities are metric (`weightKg`, `capacityKg`, `distanceKm`). Money fields
+carry no currency in their names (`estimatedCost`, `maxCost`): amounts are in
+the deployment currency, `NEXUS_CURRENCY` (default AUD). Stored timestamps are
+ISO-8601 UTC; facility operating hours and appointment slots are local to
+`NEXUS_TIMEZONE` (default Australia/Sydney), and the UI shows local time.
+`db/migrations/0002_metric_units_neutral_currency.sql` converts databases
+written before 0.4.0 (units converted, money values kept as they were).
+
 ## Determinism
 
 `lib/domain/seed.ts` uses a seeded PRNG (`lib/domain/rng.ts`, mulberry32)

@@ -1,21 +1,23 @@
 # Demo Script (~2 minutes)
 
 Run `npm run dev`, open `http://localhost:3000`. The app boots with a
-fresh, seeded dataset — 63 shipments, 10 drivers, 5 Texas facilities, 14
-vehicles — and zero agent activity yet.
+fresh, seeded dataset — 63 shipments, 10 drivers, 5 facilities across a
+regional NSW/ACT network, 14 vehicles — and zero agent activity yet.
+Times show in Sydney time (AEST) and costs in Australian dollars.
 
 ## 1. Orient on the Command Center (15s)
 
 Point out: total/active shipments, on-time rate, exception counters,
 autonomous-action counter, pending approvals — all zero/100% at rest. The
-route map shows the live shipment network across Dallas, Fort Worth,
-Austin, Houston, and San Antonio.
+route map shows the live shipment network across Sydney, Newcastle,
+Wollongong, Goulburn and Canberra.
 
 ## 2. Run the hero scenario (5s to click, ~1s to execute)
 
 Click **▶ Run Demo Scenario**. This fires the deterministic scenario:
-**driver D-07 is delayed 45 minutes** on shipment `SHP-2000` (Metroplex
-Electronics, CRITICAL priority, en route Dallas → Austin).
+**driver D-07 is delayed 45 minutes** on shipment `SHP-2000` (Parramatta
+Electronics, CRITICAL priority, en route Sydney → Canberra, due at the
+Canberra cross-dock at about 10:08 AEST).
 
 ## 3. Watch it happen (30s)
 
@@ -25,10 +27,10 @@ immediately (poll every 5s, or click a nav link to force a refresh). Open
 
 ```
 Exception detected           DETECT     driver delayed 45 min, revised ETA misses the window
-Shipment context retrieved   CONTEXT    SHP-2000, CRITICAL, driver D-07, destination FAC-AUS
+Shipment context retrieved   CONTEXT    SHP-2000, CRITICAL, driver D-07, destination FAC-CBR
 Evaluating recovery options  REASON     scoring feasible options
 Recovery option selected     PLAN       reschedule appointment — confidence ~90%+
-Autonomy level: ...          POLICY     $25 estimated cost, under the $100 threshold — autonomous
+Autonomy level: ...          POLICY     A$25 estimated cost, under the A$100 threshold — autonomous
 Executing ...                EXECUTE    reschedule appointment
 [Communication Agent]        EXECUTE    Facility contacted
 [Communication Agent]        EXECUTE    Facility confirmed

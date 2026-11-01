@@ -11,7 +11,7 @@ export function defaultPolicies(): Policy[] {
       label: "Customer ETA / delay notification",
       description: "Notify a customer of an ETA change, delay, or delivery-window update.",
       autonomyLevel: "LOW_RISK_AUTONOMOUS",
-      maxCostUsd: 0,
+      maxCost: 0,
       editable: true,
     },
     {
@@ -20,7 +20,7 @@ export function defaultPolicies(): Policy[] {
       label: "Facility appointment reschedule",
       description: "Rebook a delivery/dock appointment at the destination facility.",
       autonomyLevel: "LOW_RISK_AUTONOMOUS",
-      maxCostUsd: 100,
+      maxCost: 100,
       editable: true,
     },
     {
@@ -29,7 +29,7 @@ export function defaultPolicies(): Policy[] {
       label: "Route adjustment",
       description: "Recalculate or reorder a route in response to traffic or delay.",
       autonomyLevel: "OPERATIONAL_AUTONOMOUS",
-      maxCostUsd: 150,
+      maxCost: 150,
       editable: true,
     },
     {
@@ -38,7 +38,7 @@ export function defaultPolicies(): Policy[] {
       label: "Driver / dispatch reassignment",
       description: "Reassign a shipment to a different driver or vehicle.",
       autonomyLevel: "HIGH_IMPACT_APPROVAL",
-      maxCostUsd: null,
+      maxCost: null,
       editable: true,
     },
     {
@@ -48,7 +48,7 @@ export function defaultPolicies(): Policy[] {
       description:
         "Book an outside carrier or expedited service to recover a shipment. Autonomous under the cost threshold; escalates above it.",
       autonomyLevel: "OPERATIONAL_AUTONOMOUS",
-      maxCostUsd: 500,
+      maxCost: 500,
       editable: true,
     },
   ];

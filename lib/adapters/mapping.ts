@@ -14,8 +14,8 @@ const TRANSFORMS = [
   "integer",
   "boolean",
   "isoDate",
-  "kgToLbs",
-  "kmToMiles",
+  "lbsToKg",
+  "milesToKm",
   "percentToRatio",
   "stringList",
 ] as const;
@@ -159,21 +159,22 @@ function applyTransform(transform: Transform, value: unknown, path: string, erro
       }
       return new Date(ms).toISOString();
     }
-    case "kgToLbs": {
+    // Canonical units are metric; these convert imperial sources.
+    case "lbsToKg": {
       const n = num();
       if (!Number.isFinite(n)) {
-        errors.push(`${path}: "${String(value)}" is not a number (kg)`);
+        errors.push(`${path}: "${String(value)}" is not a number (lbs)`);
         return undefined;
       }
-      return Math.round(n / 0.45359237);
+      return Math.round(n * 0.45359237 * 10) / 10;
     }
-    case "kmToMiles": {
+    case "milesToKm": {
       const n = num();
       if (!Number.isFinite(n)) {
-        errors.push(`${path}: "${String(value)}" is not a number (km)`);
+        errors.push(`${path}: "${String(value)}" is not a number (miles)`);
         return undefined;
       }
-      return Math.round((n / 1.609344) * 10) / 10;
+      return Math.round(n * 1.609344 * 10) / 10;
     }
     case "percentToRatio": {
       const n = num();

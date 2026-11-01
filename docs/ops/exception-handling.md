@@ -22,9 +22,9 @@ selected. An LLM, if configured, only explains the choice.
 
 ## Policy and approval
 
-Customer notifications and appointment reschedules up to 100 USD run
-autonomously. Route adjustments up to 150 USD and carrier rebooking up to
-500 USD run autonomously at the operational level. Driver reassignment
+Customer notifications and appointment reschedules up to 100 AUD run
+autonomously. Route adjustments up to 150 AUD and carrier rebooking up to
+500 AUD run autonomously at the operational level. Driver reassignment
 always requires human approval. Any option whose estimated cost exceeds its
 policy threshold is escalated to the approval queue instead of executing.
 

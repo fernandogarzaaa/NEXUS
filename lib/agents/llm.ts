@@ -1,4 +1,5 @@
 import type { OperationalException, RecoveryOption, Shipment } from "../domain/types";
+import { currencyCode, formatMoney } from "../domain/locale";
 
 // ---------------------------------------------------------------------------
 // Optional LLM narration. NEXUS's decision logic (lib/agents/reasoner.ts) is
@@ -30,7 +31,7 @@ function templateRationale(input: NarrationInput): string {
     `${exception.type.replace(/_/g, " ").toLowerCase()} on ${shipment.id} adds ${exception.etaImpactMin} min, ` +
       `violating the ${shipment.priority.toLowerCase()}-priority delivery window.`,
     `Selected "${selected.description}" — score ${selected.score.toFixed(2)}, ` +
-      `${Math.round(selected.feasibility * 100)}% feasible, $${selected.estimatedCostUsd} estimated cost, ` +
+      `${Math.round(selected.feasibility * 100)}% feasible, ${formatMoney(selected.estimatedCost)} estimated cost, ` +
       `recovers ${selected.etaImprovementMin} min.`,
   ];
   if (runnerUp) {
@@ -79,6 +80,7 @@ export async function narrateRecoveryPlan(input: NarrationInput): Promise<Narrat
               priority: shipment.priority,
               exceptionType: exception.type,
               etaImpactMin: exception.etaImpactMin,
+              currency: currencyCode(),
               selectedOption: selected,
               rejectedAlternatives: alternatives.slice(0, 2),
             }),

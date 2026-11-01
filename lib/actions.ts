@@ -75,16 +75,16 @@ export async function decideApprovalAction(approvalId: string, approve: boolean)
   });
 }
 
-export async function updatePolicyAction(actionType: string, autonomyLevel: AutonomyLevel, maxCostUsd: number | null) {
+export async function updatePolicyAction(actionType: string, autonomyLevel: AutonomyLevel, maxCost: number | null) {
   await mutate(ADMIN, (principal) => {
     const before = getState().policies.get(actionType);
-    const updated = updatePolicy(actionType, { autonomyLevel, maxCostUsd });
+    const updated = updatePolicy(actionType, { autonomyLevel, maxCost });
     recordHumanAction({
       actorId: actorLabel(principal),
       action: "UPDATE_POLICY",
       entityType: "Policy",
       entityId: updated.id,
-      detail: `${actionType}: ${before?.autonomyLevel} / ${before?.maxCostUsd ?? "no limit"} -> ${updated.autonomyLevel} / ${updated.maxCostUsd ?? "no limit"}`,
+      detail: `${actionType}: ${before?.autonomyLevel} / ${before?.maxCost ?? "no limit"} -> ${updated.autonomyLevel} / ${updated.maxCost ?? "no limit"}`,
     });
   });
 }

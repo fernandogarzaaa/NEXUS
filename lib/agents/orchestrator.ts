@@ -1,4 +1,5 @@
 import { getState, nextId, nowIso } from "../domain/store";
+import { formatLocal } from "../domain/locale";
 import type {
   AgentPhase,
   AgentRun,
@@ -131,7 +132,7 @@ function executeOption(run: AgentRun, shipment: Shipment, option: RecoveryOption
         agentRunId: run.id,
         tool: "bookExpeditedCarrier",
         input: { shipmentId: shipment.id },
-        output: { carrier: "Lonestar Expedite Partners", confirmation: `EXP-${shipment.id}` },
+        output: { carrier: "Eastern Seaboard Express Freight", confirmation: `EXP-${shipment.id}` },
         status: "SUCCESS",
       });
       applyEtaImprovement({ shipmentId: shipment.id, improvementMin: impactMin, agentRunId: run.id });
@@ -155,8 +156,8 @@ function verify(shipment: Shipment): { ok: boolean; detail: string } {
   return {
     ok: withinWindow,
     detail: withinWindow
-      ? `Verified: revised ETA ${shipment.currentEta} is within the delivery window (ends ${shipment.deliveryWindowEnd}).`
-      : `Verification warning: revised ETA ${shipment.currentEta} still exceeds the delivery window (ends ${shipment.deliveryWindowEnd}).`,
+      ? `Verified: revised ETA ${formatLocal(shipment.currentEta)} is within the delivery window (ends ${formatLocal(shipment.deliveryWindowEnd)}).`
+      : `Verification warning: revised ETA ${formatLocal(shipment.currentEta)} still exceeds the delivery window (ends ${formatLocal(shipment.deliveryWindowEnd)}).`,
   };
 }
 
@@ -187,7 +188,7 @@ export async function runExceptionRecoveryAgent(exceptionId: string): Promise<Ag
     run.id,
     "CONTEXT",
     "Shipment context retrieved",
-    `${shipment.id} (${shipment.customerName}, ${shipment.priority}) — driver ${shipment.driverId}, destination ${shipment.destinationFacilityId}, window ends ${shipment.deliveryWindowEnd}.`
+    `${shipment.id} (${shipment.customerName}, ${shipment.priority}) — driver ${shipment.driverId}, destination ${shipment.destinationFacilityId}, window ends ${formatLocal(shipment.deliveryWindowEnd)}.`
   );
 
   addStep(run.id, "REASON", "Evaluating recovery options", "Scoring feasible recovery options against ETA recovery, cost, feasibility, and risk.");
@@ -203,7 +204,7 @@ export async function runExceptionRecoveryAgent(exceptionId: string): Promise<Ag
 
   const actionType = OPTION_TO_ACTION_TYPE[option.type];
   run.selectedActionType = actionType;
-  const policyDecision = evaluatePolicy(actionType, option.estimatedCostUsd);
+  const policyDecision = evaluatePolicy(actionType, option.estimatedCost);
   run.autonomyLevel = policyDecision.effectiveLevel;
   addStep(run.id, "POLICY", `Autonomy level: ${policyDecision.effectiveLevel}`, policyDecision.reason);
 
@@ -253,9 +254,9 @@ function requestHumanApproval(
     actionType: run.selectedActionType!,
     summary: `${option.type.replace(/_/g, " ")} for ${shipment.id} (${shipment.customerName})`,
     whatWillHappen: option.description,
-    why: `${exception.type.replace(/_/g, " ")} added ${exception.etaImpactMin} min, violating the ${shipment.priority.toLowerCase()}-priority delivery window ending ${shipment.deliveryWindowEnd}.`,
+    why: `${exception.type.replace(/_/g, " ")} added ${exception.etaImpactMin} min, violating the ${shipment.priority.toLowerCase()}-priority delivery window ending ${formatLocal(shipment.deliveryWindowEnd)}.`,
     expectedImpact: `Recovers ~${option.etaImprovementMin} min of ETA; ${Math.round(option.feasibility * 100)}% feasibility, risk score ${option.riskScore.toFixed(2)}.`,
-    estimatedCostUsd: option.estimatedCostUsd,
+    estimatedCost: option.estimatedCost,
     slaImpactMin: exception.etaImpactMin,
     confidence: run.plan!.confidence,
     contextNotes: [
@@ -290,7 +291,7 @@ function executeAndComplete(
     return handleExecutionFailure(run, shipment, exception, verification.detail);
   }
 
-  addStep(run.id, "UPDATE", "Shipment state updated", `${shipment.id} current ETA is now ${shipment.currentEta}; status returned to IN_TRANSIT.`);
+  addStep(run.id, "UPDATE", "Shipment state updated", `${shipment.id} current ETA is now ${formatLocal(shipment.currentEta)}; status returned to IN_TRANSIT.`);
   if (shipment.status === "EXCEPTION") shipment.status = "IN_TRANSIT";
 
   addStep(run.id, "NOTIFY", "Stakeholders notified", "Customer notified of the revised ETA; facility/driver notified where applicable.");
@@ -314,7 +315,7 @@ function handleExecutionFailure(run: AgentRun, shipment: Shipment, exception: Op
       const verification = verify(shipment);
       addStep(run.id, "VERIFY", verification.ok ? "Outcome verified on retry" : "Retry verification warning", verification.detail, verification.ok ? "OK" : "WARN");
       if (verification.ok) {
-        addStep(run.id, "UPDATE", "Shipment state updated", `${shipment.id} current ETA is now ${shipment.currentEta} after retry.`);
+        addStep(run.id, "UPDATE", "Shipment state updated", `${shipment.id} current ETA is now ${formatLocal(shipment.currentEta)} after retry.`);
         if (shipment.status === "EXCEPTION") shipment.status = "IN_TRANSIT";
         addStep(run.id, "NOTIFY", "Stakeholders notified", "Customer notified of the revised ETA after retry.");
         notifyForOption(run, shipment, exception, retryOption);

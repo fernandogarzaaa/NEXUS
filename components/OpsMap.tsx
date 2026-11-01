@@ -1,21 +1,33 @@
 import type { Facility, Shipment } from "@/lib/domain/types";
 
-const LAT_MIN = 29.2;
-const LAT_MAX = 33.0;
-const LNG_MIN = -98.7;
-const LNG_MAX = -95.1;
 const W = 640;
 const H = 360;
-const PAD = 40;
+const PAD = 48;
 
-function project(lat: number, lng: number): [number, number] {
-  const x = PAD + ((lng - LNG_MIN) / (LNG_MAX - LNG_MIN)) * (W - PAD * 2);
-  const y = PAD + (1 - (lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * (H - PAD * 2);
-  return [x, y];
+/**
+ * Fit the facilities into the frame, whatever region the network is in.
+ * Longitude is scaled by cos(latitude) so distances keep their proportions.
+ */
+function makeProjection(facilities: Facility[]): (lat: number, lng: number) => [number, number] {
+  if (facilities.length === 0) return () => [W / 2, H / 2];
+  const lats = facilities.map((f) => f.location.lat);
+  const lngs = facilities.map((f) => f.location.lng);
+  const midLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const k = Math.cos((midLat * Math.PI) / 180);
+  const xs = lngs.map((l) => l * k);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...lats);
+  const maxY = Math.max(...lats);
+  const scale = Math.min((W - PAD * 2) / Math.max(maxX - minX, 1e-6), (H - PAD * 2) / Math.max(maxY - minY, 1e-6));
+  const offX = (W - (maxX - minX) * scale) / 2;
+  const offY = (H - (maxY - minY) * scale) / 2;
+  return (lat, lng) => [offX + (lng * k - minX) * scale, offY + (maxY - lat) * scale];
 }
 
 export default function OpsMap({ facilities, shipments }: { facilities: Facility[]; shipments: Shipment[] }) {
   const facilityMap = new Map(facilities.map((f) => [f.id, f]));
+  const project = makeProjection(facilities);
   const routeShipments = shipments.filter(
     (s) => s.status === "IN_TRANSIT" || s.status === "EXCEPTION"
   );
@@ -54,7 +66,7 @@ export default function OpsMap({ facilities, shipments }: { facilities: Facility
             <text x={x} y={y - r - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text)">
               {f.city}
             </text>
-            <text x={x} y={y - r - 6 + 12} textAnchor="middle" fontSize={11} fill="var(--text-muted)">
+            <text x={x} y={y + r + 14} textAnchor="middle" fontSize={11} fill="var(--text-muted)">
               {count} shipments
             </text>
           </g>

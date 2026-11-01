@@ -72,8 +72,8 @@ describe("migration harness (dry run only)", () => {
       },
     });
     const rows: SourceRecord[] = [
-      { entity: "driver", sourceId: "20", raw: { code: "20", name: "New Driver", depot: "DAL", lat: "32.7", lng: "-96.8", fleet: "99" }, locator: "stub:1" },
-      { entity: "driver", sourceId: "21", raw: { code: "21", name: "Other Driver", depot: "PER", lat: "32.7", lng: "-96.8", fleet: "01" }, locator: "stub:2" },
+      { entity: "driver", sourceId: "20", raw: { code: "20", name: "New Driver", depot: "SYD", lat: "-33.8", lng: "150.85", fleet: "99" }, locator: "stub:1" },
+      { entity: "driver", sourceId: "21", raw: { code: "21", name: "Other Driver", depot: "PER", lat: "-31.95", lng: "115.86", fleet: "01" }, locator: "stub:2" },
     ];
     const stub: SourceAdapter = { name: "stub", kind: "csv", fetch: async () => rows };
     const report = await dryRun(mapping, { driver: stub }, getState());
@@ -103,6 +103,6 @@ describe("migration harness (dry run only)", () => {
     const v = report.entities[0];
     expect(v.counts).toMatchObject({ accepted: 1, wouldUpdate: 1, wouldCreate: 0, unchanged: 0 });
     expect(v.wouldUpdate[0].canonicalId).toBe("VEH-01");
-    expect(v.wouldUpdate[0].differences.map((x) => x.field)).toEqual(expect.arrayContaining(["capacityLbs", "status", "currentDriverId"]));
+    expect(v.wouldUpdate[0].differences.map((x) => x.field)).toEqual(expect.arrayContaining(["capacityKg", "status", "currentDriverId"]));
   });
 });

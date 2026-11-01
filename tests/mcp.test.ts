@@ -120,7 +120,7 @@ describe("MCP endpoint", () => {
   });
 
   it("still requires approval when the reassignment policy is autonomous, and only reports under OBSERVE", async () => {
-    updatePolicy("DRIVER_REASSIGNMENT", { autonomyLevel: "OPERATIONAL_AUTONOMOUS", maxCostUsd: null });
+    updatePolicy("DRIVER_REASSIGNMENT", { autonomyLevel: "OPERATIONAL_AUTONOMOUS", maxCost: null });
     const client = await connect(`agent.${SECRET}`);
     const before1000 = getState().shipments.get("SHP-1000")!.driverId;
     const res = parse(await client.callTool({ name: "request_driver_reassignment", arguments: { shipmentId: "SHP-1000", reason: "Customer asked for a different driver." } }));

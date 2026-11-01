@@ -7,9 +7,9 @@ import { AutonomyBadge } from "@/components/badges";
 
 const LEVELS: AutonomyLevel[] = ["OBSERVE", "RECOMMEND", "LOW_RISK_AUTONOMOUS", "OPERATIONAL_AUTONOMOUS", "HIGH_IMPACT_APPROVAL"];
 
-export default function PolicyRow({ policy, canEdit = true }: { policy: Policy; canEdit?: boolean }) {
+export default function PolicyRow({ policy, canEdit = true, currency = "AUD" }: { policy: Policy; canEdit?: boolean; currency?: string }) {
   const [level, setLevel] = useState<AutonomyLevel>(policy.autonomyLevel);
-  const [maxCost, setMaxCost] = useState<string>(policy.maxCostUsd === null ? "" : String(policy.maxCostUsd));
+  const [maxCost, setMaxCost] = useState<string>(policy.maxCost === null ? "" : String(policy.maxCost));
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function PolicyRow({ policy, canEdit = true }: { policy: Policy; 
           <input
             type="number"
             min={0}
-            aria-label={`Max cost in USD for ${policy.label}`}
+            aria-label={`Max cost in ${currency} for ${policy.label}`}
             aria-invalid={error ? true : undefined}
             value={maxCost}
             disabled={!canEdit}

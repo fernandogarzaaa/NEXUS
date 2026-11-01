@@ -3,6 +3,7 @@ import PageHeader from "@/components/PageHeader";
 import { ShipmentStatusBadge, PriorityBadge } from "@/components/badges";
 import { listShipments } from "@/lib/queries";
 import { loadState } from "@/lib/domain/store";
+import { formatLocal } from "@/lib/domain/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -52,10 +53,10 @@ export default async function ShipmentsPage() {
                       <ShipmentStatusBadge status={s.status} />
                     </td>
                     <td className="text-[13px]" style={late ? { color: "var(--danger)" } : undefined}>
-                      {new Date(s.currentEta).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {formatLocal(s.currentEta)}
                     </td>
                     <td className="text-[13px]" style={{ color: "var(--text-muted)" }}>
-                      {new Date(s.deliveryWindowEnd).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {formatLocal(s.deliveryWindowEnd)}
                     </td>
                   </tr>
                 );
